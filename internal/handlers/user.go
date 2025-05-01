@@ -3,27 +3,20 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-	"github.com/nyashahama/music-awards/internal/models"
 	"github.com/nyashahama/music-awards/internal/services"
 )
 
-type UserHandler struct {
-	userService services.UserService
+// UserHandler handles user-related HTTP requests
+type UserHandler interface {
+	Register(w http.ResponseWriter, r *http.Request)
+	Login(w http.ResponseWriter, r *http.Request)
+	GetProfile(w http.ResponseWriter, r *http.Request)
+	UpdateProfile(w http.ResponseWriter, r *http.Request)
+	DeleteAccount(w http.ResponseWriter, r *http.Request)
+	PromoteUser(w http.ResponseWriter, r *http.Request)
 }
 
 
-func (h *UserHandler) Register(c *gin.Context) {
-	var user models.User
-	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	
-	if err := h.userService.RegisterUser(&user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	
-	c.JSON(http.StatusCreated, user)
+type userHandler struct {
+	userService services.UserService
 }
