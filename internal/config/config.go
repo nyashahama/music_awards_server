@@ -1,3 +1,4 @@
+// config/config.go
 package config
 
 import (
@@ -10,43 +11,50 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// DB is the globally accessible database connection.
-var DB *sql.DB
+// DBConfig holds the settings for your Postgres connection.
+type DBConfig struct {
+    Host     string
+    Port     string
+    User     string
+    Password string
+    Name     string
+    SSLMode  string
+}
 
-// InitDB loads environment variables, opens a connection to Postgres,
-// verifies it with Ping, and assigns the global DB.
-func InitDB() *sql.DB {
-	// Load .env if present (no fatal if missing)
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, relying on environment variables")
-	}
+// LoadDBConfig reads environment variables (and .env) into a DBConfig.
+func LoadDBConfig() (*DBConfig, error) {
+    // Load .env, but don’t fatal if missing
+    if err := godotenv.Load(); err != nil {
+        log.Println("No .env file found, relying on environment variables")
+    }
 
-	// Gather connection info from env vars
-	host := os.Getenv("DB_HOST")
-	port := os.Getenv("DB_PORT")
-	user := os.Getenv("DB_USER")
-	password := os.Getenv("DB_PASSWORD")
-	name := os.Getenv("DB_NAME")
-	sslmode := os.Getenv("DB_SSLMODE")
+    cfg := &DBConfig{
+        Host:     os.Getenv("DB_HOST"),
+        Port:     os.Getenv("DB_PORT"),
+        User:     os.Getenv("DB_USER"),
+        Password: os.Getenv("DB_PASSWORD"),
+        Name:     os.Getenv("DB_NAME"),
+        SSLMode:  os.Getenv("DB_SSLMODE"),
+    }
 
-	// Build the DSN
-	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		host, port, user, password, name, sslmode,
-	)
+    // You could validate here that none of the strings are empty, if you like.
+    return cfg, nil
+}
 
-	// Open the connection
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		log.Fatalf("Error opening DB: %v", err)
-	}
+// InitDB takes a DBConfig and opens/pings a *sql.DB.
+func InitDB(cfg *DBConfig) (*sql.DB, error) {
+    dsn := fmt.Sprintf(
+        "host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+        cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.Name, cfg.SSLMode,
+    )
 
-	// Verify with Ping
-	if err := db.Ping(); err != nil {
-		log.Fatalf("Error pinging DB: %v", err)
-	}
-
-	log.Println("Connected to DB!")
-	DB = db
-	return db
+    db, err := sql.Open("pgx", dsn)
+    if err != nil {
+        return nil, fmt.Errorf("opening DB: %w", err)
+    }
+    if err := db.Ping(); err != nil {
+        return nil, fmt.Errorf("pinging DB: %w", err)
+    }
+    log.Println("Connected to DB!")
+    return db, nil
 }

@@ -8,7 +8,7 @@ import (
 
 type Category struct {
 	CategoryID  uuid.UUID `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()"`
-	Name        string    `gorm:"uniqueIndex;not null"`
+	Name        string    `gorm:"unique;not null"`
 	Description string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

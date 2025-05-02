@@ -119,11 +119,32 @@ func CloseConnection() {
 
 // MigrateModels runs database migrations
 func MigrateModels(db *gorm.DB, models ...interface{}) error {
-	err := db.AutoMigrate(models...)
-	if err != nil {
-		return fmt.Errorf("failed to migrate models: %w", err)
-	}
-	return nil
+    // First create UUID extension
+    if err := db.Exec(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`).Error; err != nil {
+        return fmt.Errorf("failed to create uuid extension: %w", err)
+    }
+
+    // Disable foreign key constraints during migration
+    db.Exec("SET session_replication_role = replica;")
+    defer db.Exec("SET session_replication_role = DEFAULT;")
+
+    // Migrate tables with explicit settings
+    if err := db.AutoMigrate(models...); err != nil {
+        return fmt.Errorf("failed to migrate models: %w", err)
+    }
+
+    // Add composite foreign key for votes table
+    if err := db.Exec(`
+        ALTER TABLE votes
+        ADD CONSTRAINT fk_vote_nominee_category
+        FOREIGN KEY (nominee_id, category_id) 
+        REFERENCES nominee_categories(nominee_id, category_id)
+        ON DELETE CASCADE
+    `).Error; err != nil {
+        return fmt.Errorf("failed to create composite foreign key: %w", err)
+    }
+
+    return nil
 }
 
 // HealthCheck verifies database connectivity
