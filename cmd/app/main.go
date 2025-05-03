@@ -14,7 +14,6 @@ import (
 	"github.com/nyashahama/music-awards/internal/db"
 	"github.com/nyashahama/music-awards/internal/handlers"
 	"github.com/nyashahama/music-awards/internal/middleware"
-	"github.com/nyashahama/music-awards/internal/models"
 	"github.com/nyashahama/music-awards/internal/repositories"
 	"github.com/nyashahama/music-awards/internal/services"
 	"gorm.io/driver/postgres"
@@ -42,13 +41,9 @@ func Run() {
 		log.Fatalf("Failed to create GORM instance: %v", err)
 	}
 
-	// Migrate models
-	if err := db.MigrateModels(gormDB,
-		&models.User{},
-		&models.Category{},
-		&models.Nominee{},
-		&models.Vote{},
-	); err != nil {
+	
+	// Migrate models (remove parameter passing)
+	if err := db.MigrateModels(gormDB); err != nil {
 		log.Fatalf("Migration failed: %v", err)
 	}
 

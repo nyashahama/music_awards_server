@@ -15,4 +15,5 @@ type User struct {
     Role         string    `gorm:"not null"`
     CreatedAt    time.Time `gorm:"autoCreateTime"`
     UpdatedAt    time.Time `gorm:"autoUpdateTime"`
+    Votes []Vote `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
 }

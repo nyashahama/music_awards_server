@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nyashahama/music-awards/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -118,43 +119,71 @@ func CloseConnection() {
 }
 
 // MigrateModels runs database migrations
-func MigrateModels(db *gorm.DB, models ...interface{}) error {
-    // Create UUID extension if not exists
+func MigrateModels(db *gorm.DB) error {
     if err := db.Exec(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`).Error; err != nil {
         return fmt.Errorf("failed to create uuid extension: %w", err)
     }
 
-    // Disable foreign key constraints during migration
-    db.Exec("SET session_replication_role = replica;")
-    defer db.Exec("SET session_replication_role = DEFAULT;")
+    // Disable constraints during migration
+    if err := db.Exec("SET session_replication_role = replica").Error; err != nil {
+        return err
+    }
+    defer db.Exec("SET session_replication_role = DEFAULT")
 
-    // Migrate tables
-    if err := db.AutoMigrate(models...); err != nil {
-        return fmt.Errorf("failed to migrate models: %w", err)
+    // Create tables without constraints
+    err := db.AutoMigrate(
+        &models.User{},
+        &models.Category{},
+        &models.Nominee{},
+        &models.NomineeCategory{},
+        &models.Vote{},
+    )
+    if err != nil {
+        return fmt.Errorf("failed to create tables: %w", err)
     }
 
-    // Check and create composite foreign key if not exists
-    if err := db.Exec(`
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM pg_constraint 
-                WHERE conname = 'fk_vote_nominee_category'
-            ) THEN
-                ALTER TABLE votes
-                ADD CONSTRAINT fk_vote_nominee_category
-                FOREIGN KEY (nominee_id, category_id) 
-                REFERENCES nominee_categories(nominee_id, category_id)
-                ON DELETE CASCADE;
-            END IF;
-        END $$;
-    `).Error; err != nil {
-        return fmt.Errorf("failed to create composite foreign key: %w", err)
+    // Add foreign keys only if they don't exist
+    foreignKeys := []struct {
+        name    string
+        sql     string
+    }{
+        {
+            name: "fk_votes_user",
+            sql: `ALTER TABLE votes
+                  ADD CONSTRAINT fk_votes_user
+                  FOREIGN KEY (user_id) REFERENCES users(user_id)
+                  ON DELETE CASCADE`,
+        },
+        {
+            name: "fk_votes_nominee_category",
+            sql: `ALTER TABLE votes
+                  ADD CONSTRAINT fk_votes_nominee_category
+                  FOREIGN KEY (nominee_id, category_id) 
+                  REFERENCES nominee_categories(nominee_id, category_id)
+                  ON DELETE CASCADE`,
+        },
+    }
+
+    for _, fk := range foreignKeys {
+        err := db.Exec(fmt.Sprintf(`
+            DO $$ 
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint 
+                    WHERE conname = '%s'
+                ) THEN
+                    %s;
+                END IF;
+            END $$;
+        `, fk.name, fk.sql)).Error
+
+        if err != nil {
+            return fmt.Errorf("failed to create %s: %w", fk.name, err)
+        }
     }
 
     return nil
 }
-
 // HealthCheck verifies database connectivity
 func HealthCheck() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)

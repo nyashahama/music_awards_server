@@ -9,6 +9,7 @@ import (
 	"github.com/nyashahama/music-awards/internal/models"
 	"github.com/nyashahama/music-awards/internal/repositories"
 	"github.com/nyashahama/music-awards/internal/security"
+	"github.com/nyashahama/music-awards/internal/validation"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -34,6 +35,16 @@ func NewUserService(userRepo repositories.UserRepository) UserService {
 }
 
 func (s *userService) Register(ctx context.Context, username, email, password string) (*models.User, error) {
+	 // 1) Validate email format
+	 if !validation.ValidateEmail(email) {
+        return nil, errors.New("invalid email format")
+    }
+
+    // 2) Validate password strength
+    if err := validation.ValidatePassword(password); err != nil {
+        return nil, fmt.Errorf("password validation failed: %w", err)
+    }
+
 	// Check for existing email
 	_, err := s.userRepo.GetByEmail(email)
 	if err == nil {
