@@ -119,7 +119,7 @@ func CloseConnection() {
 
 // MigrateModels runs database migrations
 func MigrateModels(db *gorm.DB, models ...interface{}) error {
-    // First create UUID extension
+    // Create UUID extension if not exists
     if err := db.Exec(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`).Error; err != nil {
         return fmt.Errorf("failed to create uuid extension: %w", err)
     }
@@ -128,18 +128,26 @@ func MigrateModels(db *gorm.DB, models ...interface{}) error {
     db.Exec("SET session_replication_role = replica;")
     defer db.Exec("SET session_replication_role = DEFAULT;")
 
-    // Migrate tables with explicit settings
+    // Migrate tables
     if err := db.AutoMigrate(models...); err != nil {
         return fmt.Errorf("failed to migrate models: %w", err)
     }
 
-    // Add composite foreign key for votes table
+    // Check and create composite foreign key if not exists
     if err := db.Exec(`
-        ALTER TABLE votes
-        ADD CONSTRAINT fk_vote_nominee_category
-        FOREIGN KEY (nominee_id, category_id) 
-        REFERENCES nominee_categories(nominee_id, category_id)
-        ON DELETE CASCADE
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint 
+                WHERE conname = 'fk_vote_nominee_category'
+            ) THEN
+                ALTER TABLE votes
+                ADD CONSTRAINT fk_vote_nominee_category
+                FOREIGN KEY (nominee_id, category_id) 
+                REFERENCES nominee_categories(nominee_id, category_id)
+                ON DELETE CASCADE;
+            END IF;
+        END $$;
     `).Error; err != nil {
         return fmt.Errorf("failed to create composite foreign key: %w", err)
     }
