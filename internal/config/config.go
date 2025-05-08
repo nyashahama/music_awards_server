@@ -58,3 +58,15 @@ func InitDB(cfg *DBConfig) (*sql.DB, error) {
     log.Println("Connected to DB!")
     return db, nil
 }
+
+
+// DatabaseURL builds a postgres:// URL string for golang-migrate.
+func (c *DBConfig) DatabaseURL() string {
+    // e.g. "postgres://user:pass@host:port/dbname?sslmode=disable"
+    return fmt.Sprintf(
+        "postgres://%s:%s@%s:%s/%s?sslmode=%s",
+        c.User, c.Password,
+        c.Host, c.Port,
+        c.Name, c.SSLMode,
+    )
+}
