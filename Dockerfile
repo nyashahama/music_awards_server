@@ -21,7 +21,7 @@ WORKDIR /
 COPY --from=builder /music-awards .
 
 # Expose application port
-EXPOSE 8000
+EXPOSE 8080
 
 # Start the server
 CMD ["/music-awards"]
