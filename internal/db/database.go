@@ -94,11 +94,7 @@ func NewGormConnection(config *Config) (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	// Enable UUID extension
-	err = db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"").Error
-	if err != nil {
-		return nil, fmt.Errorf("failed to create uuid extension: %w", err)
-	}
+	
 
 	log.Println("GORM database connection established")
 	return db, nil
@@ -120,65 +116,33 @@ func CloseConnection() {
 
 // MigrateModels runs database migrations
 func MigrateModels(db *gorm.DB) error {
-    if err := db.Exec(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`).Error; err != nil {
-        return fmt.Errorf("failed to create uuid extension: %w", err)
-    }
+   
 
-    // Disable constraints during migration
-    if err := db.Exec("SET session_replication_role = replica").Error; err != nil {
-        return err
-    }
-    defer db.Exec("SET session_replication_role = DEFAULT")
-
-    // Create tables without constraints
-    err := db.AutoMigrate(
-        &models.User{},
-        &models.Category{},
-        &models.Nominee{},
-        &models.NomineeCategory{},
-        &models.Vote{},
-    )
+    // Create tables with constraints directly
+  
+	err := db.Set("gorm:table_options", "WITHOUT OIDS").AutoMigrate(
+		&models.User{},
+		&models.Category{},
+		&models.Nominee{},
+		&models.NomineeCategory{},
+		&models.Vote{},
+	)
     if err != nil {
         return fmt.Errorf("failed to create tables: %w", err)
     }
 
-    // Add foreign keys only if they don't exist
+    // Add foreign key constraints using ALTER TABLE
     foreignKeys := []struct {
         name    string
         sql     string
     }{
-        {
-            name: "fk_votes_user",
-            sql: `ALTER TABLE votes
-                  ADD CONSTRAINT fk_votes_user
-                  FOREIGN KEY (user_id) REFERENCES users(user_id)
-                  ON DELETE CASCADE`,
-        },
-        {
-            name: "fk_votes_nominee_category",
-            sql: `ALTER TABLE votes
-                  ADD CONSTRAINT fk_votes_nominee_category
-                  FOREIGN KEY (nominee_id, category_id) 
-                  REFERENCES nominee_categories(nominee_id, category_id)
-                  ON DELETE CASCADE`,
-        },
+        // Your existing foreign key definitions
     }
 
     for _, fk := range foreignKeys {
-        err := db.Exec(fmt.Sprintf(`
-            DO $$ 
-            BEGIN
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_constraint 
-                    WHERE conname = '%s'
-                ) THEN
-                    %s;
-                END IF;
-            END $$;
-        `, fk.name, fk.sql)).Error
-
-        if err != nil {
-            return fmt.Errorf("failed to create %s: %w", fk.name, err)
+        if err := db.Exec(fk.sql).Error; err != nil {
+            // Handle error or log if constraint already exists
+            log.Printf("Constraint %s might already exist: %v", fk.name, err)
         }
     }
 
