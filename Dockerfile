@@ -25,3 +25,6 @@ EXPOSE 8000
 
 # Start the server
 CMD ["/music-awards"]
+
+
+STOPSIGNAL SIGINT
