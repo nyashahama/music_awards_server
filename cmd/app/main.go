@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -71,11 +72,23 @@ func Run() {
   userH    := handlers.NewUserHandler(userSvc)
 
   router := gin.Default()
-  api := router.Group("/api")
-  {
-    api.POST("/register", userH.Register)
-    api.POST("/login",    userH.Login)
-  }
+
+	// Add CORS configuration
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"}, // For production, specify your frontend domains instead of "*"
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
+	// [Rest of your existing routes setup...]
+	api := router.Group("/api")
+	{
+		api.POST("/register", userH.Register)
+		api.POST("/login", userH.Login)
+	}
   protected := router.Group("/api", middleware.AuthMiddleware())
   {
     protected.GET("/profile",         handlers.ProfileHandler)

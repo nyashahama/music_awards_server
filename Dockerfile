@@ -2,22 +2,19 @@
 FROM golang:1.24.2-alpine AS builder
 WORKDIR /app
 
-# Download modules
+# Download Go modules
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the rest of the source code
+# Copy the source code
 COPY . .
 
-# Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -o /music-awards ./cmd/server
+# Build the binary (using cmd/app/main.go)
+RUN CGO_ENABLED=0 GOOS=linux go build -o /music-awards ./cmd/app/main.go
 
 # Runtime stage
 FROM alpine:3.18
-
-# Install certificates for HTTPS
 RUN apk add --no-cache ca-certificates
-
 WORKDIR /
 
 # Copy the compiled binary
