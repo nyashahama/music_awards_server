@@ -1,30 +1,25 @@
-# Build stage
+# ─── Build stage ──────────────────────────────────────────────────────
 FROM golang:1.24.2-alpine AS builder
 WORKDIR /app
 
-# Download Go modules
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the source code
 COPY . .
-
-# Build the binary (using cmd/app/main.go)
 RUN CGO_ENABLED=0 GOOS=linux go build -o /music-awards ./main.go
 
-# Runtime stage
+# ─── Runtime stage ────────────────────────────────────────────────────
 FROM alpine:3.18
 RUN apk add --no-cache ca-certificates
-WORKDIR /
+WORKDIR /app
 
-# Copy the compiled binary
+# copy the compiled binary
 COPY --from=builder /music-awards .
 
-# Expose application port
+# copy your migrations directory too!
+COPY --from=builder /app/migrations ./migrations
+
 EXPOSE 8000
-
-# Start the server
-CMD ["/music-awards"]
-
-
 STOPSIGNAL SIGINT
+
+CMD ["/app/music-awards"]
