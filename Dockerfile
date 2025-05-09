@@ -10,7 +10,7 @@ RUN go mod download
 COPY . .
 
 # Build the binary (using cmd/app/main.go)
-RUN CGO_ENABLED=0 GOOS=linux go build -o /music-awards ./cmd/app/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /music-awards ./main.go
 
 # Runtime stage
 FROM alpine:3.18
