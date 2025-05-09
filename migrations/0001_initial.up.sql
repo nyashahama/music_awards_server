@@ -1,6 +1,6 @@
 -- Enable UUID extension
 
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" 
 
 -- Create tables in dependency order
 CREATE TABLE users (
@@ -55,7 +55,3 @@ CREATE TABLE votes (
   UNIQUE (user_id, category_id)
 );
 
--- Add these at the end of 0001_initial.up.sql:
-CREATE INDEX CONCURRENTLY idx_users_email ON users(email);
-CREATE INDEX CONCURRENTLY idx_votes_user_category ON votes(user_id, category_id);
-CREATE INDEX CONCURRENTLY idx_nominee_categories_composite ON nominee_categories(nominee_id, category_id);
