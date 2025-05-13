@@ -1,22 +1,22 @@
 -- Enable UUID extension
 
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" 
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 
 -- Create tables in dependency order
 CREATE TABLE users (
   user_id        UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
-  -- first_name     VARCHAR(255) NOT NULL,
-  -- last_name      VARCHAR(255) NOT NULL,
   username       VARCHAR(255) NOT NULL UNIQUE,
   password_hash  VARCHAR(255) NOT NULL,
   email          VARCHAR(255) NOT NULL UNIQUE,
   role           VARCHAR(50)  NOT NULL,
-  created_at     TIMESTAMP   NOT NULL DEFAULT now(),
-  updated_at     TIMESTAMP   NOT NULL DEFAULT now()
+  created_at     TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP, -- FIXED
+  updated_at     TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP  -- FIXED
 );
 
 --SUDO -I -U POSTGRES
 --PSQL -U POSTGRES -D MUSIX
+
 
 CREATE TABLE categories (
   category_id   UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
