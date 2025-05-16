@@ -22,6 +22,7 @@ type UserService interface {
 	UpdateUser(ctx context.Context, userID uuid.UUID, updateData map[string]interface{}) (*models.User, error)
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 	PromoteToAdmin(ctx context.Context, userID uuid.UUID) error
+	GetAllUsers(ctx context.Context) ([]models.User, error)
 }
 
 type userService struct {
@@ -50,9 +51,9 @@ func (s *userService) Register(ctx context.Context, username, email, password st
 	if err == nil {
 		return nil, errors.New("email already exists")
 	}
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("failed to check email: %w", err)
-	}
+	// if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	// 	return nil, fmt.Errorf("failed to check email: %w", err)
+	// }
 
 	hashedPassword, err := hashPassword(password)
 	if err != nil {
@@ -84,7 +85,7 @@ func (s *userService) Login(ctx context.Context, email, password string) (string
 	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) != nil {
 		return "", errors.New("invalid credentials")
 	}
-	token, err := security.GenerateJWT(user.UserID)
+	token, err := security.GenerateJWT(user.UserID, user.Role)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -155,6 +156,14 @@ func (s *userService) PromoteToAdmin(ctx context.Context, userID uuid.UUID) erro
 	}
 	user.Role = "admin"
 	return s.userRepo.Update(user)
+}
+
+func (s *userService) GetAllUsers(ctx context.Context) ([]models.User, error){
+	users, err := s.userRepo.GetAll()
+	if err != nil{
+		return nil, fmt.Errorf("failed to get all users: %w", err)
+	}
+	return users, nil
 }
 
 func hashPassword(password string) (string, error) {
