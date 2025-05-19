@@ -74,6 +74,7 @@ func Run() {
 	// Production-friendly middleware stack
 	router.Use(
 		gin.Recovery(),
+		gin.Logger(),
 		cors.New(cors.Config{
 			AllowOrigins:     []string{os.Getenv("FRONTEND_URL")}, 
 			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -96,6 +97,7 @@ func Run() {
 	{
 		protected.GET("/profile", handlers.ProfileHandler)
 		protected.GET("/profile/:id", userH.GetProfile)
+		protected.GET("/profile/users",userH.ListAllUsers)
 		protected.PUT("/profile/:id", userH.UpdateProfile)
 		protected.DELETE("/profile/:id", userH.DeleteAccount)
 		protected.PUT("/profile/:id/promote", userH.PromoteUser)
