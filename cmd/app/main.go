@@ -68,6 +68,12 @@ func Run() {
 	userSvc := services.NewUserService(userRepo)
 	userH := handlers.NewUserHandler(userSvc)
 
+	//Initialize category dependencies
+	categoryRepo := repositories.NewCategoryRepository(gormDB)
+	categorySvc := services.NewCategoryService(categoryRepo)
+	categoryH := handlers.NewCategoryHandler(categorySvc)
+
+
 	// 6) Configure Gin router with production settings
 	router := gin.New()
 	
@@ -90,6 +96,11 @@ func Run() {
 	{
 		api.POST("/register", userH.Register)
 		api.POST("/login", userH.Login)
+
+		//Public Category APIs
+		api.GET("/categories", categoryH.ListCategories)
+		api.GET("/categories/active", categoryH.ListActiveCategories)
+		api.GET("/categories/:categoryId", categoryH.GetCategory)
 	}
 
 	// Protected routes
@@ -101,6 +112,15 @@ func Run() {
 		protected.PUT("/profile/:id", userH.UpdateProfile)
 		protected.DELETE("/profile/:id", userH.DeleteAccount)
 		protected.PUT("/profile/:id/promote", userH.PromoteUser)
+
+		//Protected Category APIs
+	adminCategories := protected.Group("/categories", middleware.AdminMiddleware())
+		{
+			adminCategories.POST("", categoryH.CreateCategory)
+			adminCategories.PUT("/:categoryId", categoryH.UpdateCategory)
+			adminCategories.DELETE("/:categoryId", categoryH.DeleteCategory)
+		}
+		
 	}
 
 	// 7) Configure server with proper timeouts
