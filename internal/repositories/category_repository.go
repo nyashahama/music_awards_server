@@ -42,7 +42,7 @@ func (r *categoryRepository) GetByName(name string) (*models.Category, error) {
 
 func (r *categoryRepository) GetAll() ([]models.Category, error) {
 	var categories []models.Category
-	err := r.db.Find(&categories).Error
+	err := r.db.Preload("Votes").Find(&categories).Error
 	return categories, err
 }
 
