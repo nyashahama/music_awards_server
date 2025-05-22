@@ -85,7 +85,7 @@ func (s *userService) Login(ctx context.Context, email, password string) (string
 	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) != nil {
 		return "", errors.New("invalid credentials")
 	}
-	token, err := security.GenerateJWT(user.UserID, user.Role)
+	token, err := security.GenerateJWT(user.UserID,user.Username, user.Role)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
