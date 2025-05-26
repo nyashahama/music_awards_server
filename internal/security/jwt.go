@@ -10,10 +10,10 @@ import (
 )
 
 type JWTClaims struct {
-	UserID uuid.UUID `json:"user_id"`
-	Username string `json:"username"`
-	Role string      `json:"role"`
-	Email string `json:"email"`
+	UserID   uuid.UUID `json:"user_id"`
+	Username string    `json:"username"`
+	Role     string    `json:"role"`
+	Email    string    `json:"email"`
 	jwt.RegisteredClaims
 }
 
@@ -21,10 +21,10 @@ var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
 func GenerateJWT(userID uuid.UUID, username string, role string, email string) (string, error) {
 	claims := JWTClaims{
-		UserID: userID,
+		UserID:   userID,
 		Username: username,
-		Role: role,
-		Email: email,
+		Role:     role,
+		Email:    email,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

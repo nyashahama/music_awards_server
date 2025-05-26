@@ -12,7 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-
 type UserHandler struct {
 	userService services.UserService
 }
@@ -28,14 +27,13 @@ func (h *UserHandler) RegisterRoutes(r *gin.Engine) {
 	auth.POST("/login", h.Login)
 
 	// Protected user endpoints
-    users := r.Group("/users")
-    users.Use(middleware.AuthMiddleware()) // Ensure AuthMiddleware is applied
-    users.GET("", h.ListAllUsers) // New route for listing users
-    users.GET("/:id", h.GetProfile)
-    users.PUT("/:id", h.UpdateProfile)
-    users.DELETE("/:id", h.DeleteAccount)
+	users := r.Group("/users")
+	users.Use(middleware.AuthMiddleware()) // Ensure AuthMiddleware is applied
+	users.GET("", h.ListAllUsers)          // New route for listing users
+	users.GET("/:id", h.GetProfile)
+	users.PUT("/:id", h.UpdateProfile)
+	users.DELETE("/:id", h.DeleteAccount)
 }
-
 
 func ProfileHandler(c *gin.Context) {
 	uid := c.MustGet("user_id").(uuid.UUID)
@@ -84,20 +82,20 @@ func (h *UserHandler) Login(c *gin.Context) {
 }
 
 func (h *UserHandler) ListAllUsers(c *gin.Context) {
-    // Check if current user is admin
-    currentUserRole, exists := c.Get("user_role")
-    if !exists || currentUserRole != "admin" {
-        c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
-        return
-    }
+	// Check if current user is admin
+	currentUserRole, exists := c.Get("user_role")
+	if !exists || currentUserRole != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
 
-    users, err := h.userService.GetAllUsers(c.Request.Context())
-    if err != nil {
-        handleServiceError(c, err)
-        return
-    }
+	users, err := h.userService.GetAllUsers(c.Request.Context())
+	if err != nil {
+		handleServiceError(c, err)
+		return
+	}
 
-    c.JSON(http.StatusOK, users)
+	c.JSON(http.StatusOK, users)
 }
 
 func (h *UserHandler) GetProfile(c *gin.Context) {
@@ -147,37 +145,37 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 }
 
 func (h *UserHandler) DeleteAccount(c *gin.Context) {
-    userID, err := uuid.Parse(c.Param("id"))
-    if err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
-        return
-    }
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
+		return
+	}
 
-    // Get current user's claims from context
-    currentUserID, exists := c.Get("user_id")
-    if !exists {
-        c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-        return
-    }
+	// Get current user's claims from context
+	currentUserID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
 
-    currentUserRole, exists := c.Get("user_role")
-    if !exists {
-        c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-        return
-    }
+	currentUserRole, exists := c.Get("user_role")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
 
-    // Authorization check
-    if currentUserRole.(string) != "admin" && currentUserID.(uuid.UUID) != userID {
-        c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
-        return
-    }
+	// Authorization check
+	if currentUserRole.(string) != "admin" && currentUserID.(uuid.UUID) != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
 
-    if err := h.userService.DeleteUser(c.Request.Context(), userID); err != nil {
-        handleServiceError(c, err)
-        return
-    }
+	if err := h.userService.DeleteUser(c.Request.Context(), userID); err != nil {
+		handleServiceError(c, err)
+		return
+	}
 
-    c.Status(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }
 
 func (h *UserHandler) PromoteUser(c *gin.Context) {
@@ -208,3 +206,4 @@ func handleServiceError(c *gin.Context, err error) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 	}
 }
+

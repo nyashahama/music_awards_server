@@ -2,7 +2,6 @@ package models
 
 import "github.com/google/uuid"
 
-
 type NomineeCategory struct {
 	NomineeID  uuid.UUID `gorm:"type:uuid;primaryKey"`
 	CategoryID uuid.UUID `gorm:"type:uuid;primaryKey"`

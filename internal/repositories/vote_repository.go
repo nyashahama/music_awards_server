@@ -60,3 +60,4 @@ func (r *voteRepository) Update(vote *models.Vote) error {
 func (r *voteRepository) Delete(id uuid.UUID) error {
 	return r.db.Delete(&models.Vote{}, "vote_id = ?", id).Error
 }
+

@@ -8,7 +8,7 @@ import (
 
 type UserRepository interface {
 	Create(user *models.User) error
-	GetByID(id uuid.UUID) (*models.User,error)
+	GetByID(id uuid.UUID) (*models.User, error)
 	GetByEmail(email string) (*models.User, error)
 	GetAll() ([]models.User, error)
 	Update(user *models.User) error
@@ -20,14 +20,14 @@ type userRepository struct {
 }
 
 func NewUserRepository(db *gorm.DB) UserRepository {
-	return &userRepository{db:db}
+	return &userRepository{db: db}
 }
 
-func (r *userRepository) Create(user *models.User) error{
+func (r *userRepository) Create(user *models.User) error {
 	return r.db.Create(user).Error
 }
 
-func (r *userRepository) GetByID(id uuid.UUID) (*models.User,error) {
+func (r *userRepository) GetByID(id uuid.UUID) (*models.User, error) {
 	var user models.User
 	err := r.db.First(&user, "user_id = ?", id).Error
 	return &user, err

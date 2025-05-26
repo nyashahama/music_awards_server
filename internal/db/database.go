@@ -14,9 +14,9 @@ import (
 )
 
 var (
-	dbPool     *pgxpool.Pool
-	gormDB     *gorm.DB
-	dbOnce     sync.Once
+	dbPool *pgxpool.Pool
+	gormDB *gorm.DB
+	dbOnce sync.Once
 )
 
 // Database configuration structure
@@ -94,8 +94,6 @@ func NewGormConnection(config *Config) (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	
-
 	log.Println("GORM database connection established")
 	return db, nil
 }
@@ -116,10 +114,9 @@ func CloseConnection() {
 
 // MigrateModels runs database migrations
 func MigrateModels(db *gorm.DB) error {
-   
 
-    // Create tables with constraints directly
-  
+	// Create tables with constraints directly
+
 	err := db.Set("gorm:table_options", "WITHOUT OIDS").AutoMigrate(
 		&models.User{},
 		&models.Category{},
@@ -127,30 +124,32 @@ func MigrateModels(db *gorm.DB) error {
 		&models.NomineeCategory{},
 		&models.Vote{},
 	)
-    if err != nil {
-        return fmt.Errorf("failed to create tables: %w", err)
-    }
+	if err != nil {
+		return fmt.Errorf("failed to create tables: %w", err)
+	}
 
-    // Add foreign key constraints using ALTER TABLE
-    foreignKeys := []struct {
-        name    string
-        sql     string
-    }{
-        // Your existing foreign key definitions
-    }
+	// Add foreign key constraints using ALTER TABLE
+	foreignKeys := []struct {
+		name string
+		sql  string
+	}{
+		// Your existing foreign key definitions
+	}
 
-    for _, fk := range foreignKeys {
-        if err := db.Exec(fk.sql).Error; err != nil {
-            // Handle error or log if constraint already exists
-            log.Printf("Constraint %s might already exist: %v", fk.name, err)
-        }
-    }
+	for _, fk := range foreignKeys {
+		if err := db.Exec(fk.sql).Error; err != nil {
+			// Handle error or log if constraint already exists
+			log.Printf("Constraint %s might already exist: %v", fk.name, err)
+		}
+	}
 
-    return nil
+	return nil
 }
+
 // HealthCheck verifies database connectivity
 func HealthCheck() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	return dbPool.Ping(ctx)
 }
+

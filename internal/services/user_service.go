@@ -36,15 +36,15 @@ func NewUserService(userRepo repositories.UserRepository) UserService {
 }
 
 func (s *userService) Register(ctx context.Context, username, email, password string) (*models.User, error) {
-	 // 1) Validate email format
-	 if !validation.ValidateEmail(email) {
-        return nil, errors.New("invalid email format")
-    }
+	// 1) Validate email format
+	if !validation.ValidateEmail(email) {
+		return nil, errors.New("invalid email format")
+	}
 
-    // 2) Validate password strength
-    if err := validation.ValidatePassword(password); err != nil {
-        return nil, fmt.Errorf("password validation failed: %w", err)
-    }
+	// 2) Validate password strength
+	if err := validation.ValidatePassword(password); err != nil {
+		return nil, fmt.Errorf("password validation failed: %w", err)
+	}
 
 	// Check for existing email
 	_, err := s.userRepo.GetByEmail(email)
@@ -85,7 +85,7 @@ func (s *userService) Login(ctx context.Context, email, password string) (string
 	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) != nil {
 		return "", errors.New("invalid credentials")
 	}
-	token, err := security.GenerateJWT(user.UserID,user.Username, user.Role, user.Email)
+	token, err := security.GenerateJWT(user.UserID, user.Username, user.Role, user.Email)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -158,9 +158,9 @@ func (s *userService) PromoteToAdmin(ctx context.Context, userID uuid.UUID) erro
 	return s.userRepo.Update(user)
 }
 
-func (s *userService) GetAllUsers(ctx context.Context) ([]models.User, error){
+func (s *userService) GetAllUsers(ctx context.Context) ([]models.User, error) {
 	users, err := s.userRepo.GetAll()
-	if err != nil{
+	if err != nil {
 		return nil, fmt.Errorf("failed to get all users: %w", err)
 	}
 	return users, nil

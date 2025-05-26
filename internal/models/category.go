@@ -12,5 +12,6 @@ type Category struct {
 	Description string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
-	Votes        []Vote    `gorm:"foreignKey:CategoryID;constraint:OnDelete:CASCADE;"`
+	Votes       []Vote `gorm:"foreignKey:CategoryID;constraint:OnDelete:CASCADE;"`
 }
+

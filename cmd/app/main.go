@@ -73,16 +73,15 @@ func Run() {
 	categorySvc := services.NewCategoryService(categoryRepo)
 	categoryH := handlers.NewCategoryHandler(categorySvc)
 
-
 	// 6) Configure Gin router with production settings
 	router := gin.New()
-	
+
 	// Production-friendly middleware stack
 	router.Use(
 		gin.Recovery(),
 		gin.Logger(),
 		cors.New(cors.Config{
-			AllowOrigins:     []string{os.Getenv("FRONTEND_URL")}, 
+			AllowOrigins:     []string{os.Getenv("FRONTEND_URL")},
 			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 			ExposeHeaders:    []string{"Content-Length"},
@@ -108,19 +107,19 @@ func Run() {
 	{
 		protected.GET("/profile", handlers.ProfileHandler)
 		protected.GET("/profile/:id", userH.GetProfile)
-		protected.GET("/profile/users",userH.ListAllUsers)
+		protected.GET("/profile/users", userH.ListAllUsers)
 		protected.PUT("/profile/:id", userH.UpdateProfile)
 		protected.DELETE("/profile/:id", userH.DeleteAccount)
 		protected.PUT("/profile/:id/promote", userH.PromoteUser)
 
 		//Protected Category APIs
-	adminCategories := protected.Group("/categories", middleware.AdminMiddleware())
+		adminCategories := protected.Group("/categories", middleware.AdminMiddleware())
 		{
 			adminCategories.POST("", categoryH.CreateCategory)
 			adminCategories.PUT("/:categoryId", categoryH.UpdateCategory)
 			adminCategories.DELETE("/:categoryId", categoryH.DeleteCategory)
 		}
-		
+
 	}
 
 	// 7) Configure server with proper timeouts
@@ -150,10 +149,10 @@ func Run() {
 
 	<-quit
 	log.Println("Shutting down...")
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	
+
 	if err := server.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
