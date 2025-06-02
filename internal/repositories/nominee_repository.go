@@ -14,6 +14,8 @@ type NomineeRepository interface {
 	Update(nominee *models.Nominee) error
 	Delete(id uuid.UUID) error
 	GetByCategory(categoryID uuid.UUID) ([]models.Nominee, error)
+	AddCategory(nomineeID, categoryID uuid.UUID) error
+	RemoveCategory(nomineeID, categoryID uuid.UUID) error
 }
 
 type nomineeRepository struct {
@@ -55,4 +57,19 @@ func (r *nomineeRepository) GetByCategory(categoryID uuid.UUID) ([]models.Nomine
 		Preload("Categories").
 		Find(&nominees).Error
 	return nominees, err
+}
+
+func (r *nomineeRepository) AddCategory(nomineeID, categoryID uuid.UUID) error {
+	return r.db.Exec(`
+		INSERT INTO nominee_categories (nominee_id, category_id)
+		VALUES (?, ?)
+		ON CONFLICT (nominee_id, category_id) DO NOTHING
+	`, nomineeID, categoryID).Error
+}
+
+func (r *nomineeRepository) RemoveCategory(nomineeID, categoryID uuid.UUID) error {
+	return r.db.Exec(`
+		DELETE FROM nominee_categories 
+		WHERE nominee_id = ? AND category_id = ?
+	`, nomineeID, categoryID).Error
 }

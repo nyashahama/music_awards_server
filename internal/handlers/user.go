@@ -206,4 +206,3 @@ func handleServiceError(c *gin.Context, err error) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 	}
 }
-

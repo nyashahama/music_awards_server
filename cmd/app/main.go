@@ -73,6 +73,11 @@ func Run() {
 	categorySvc := services.NewCategoryService(categoryRepo)
 	categoryH := handlers.NewCategoryHandler(categorySvc)
 
+	//Initialize nominee dependencies
+	nomineeRepo := repositories.NewNomineeRepository(gormDB)
+	nomineeSvc := services.NewNomineeService(nomineeRepo)
+	nomineeH := handlers.NewNomineeHandler(nomineeSvc)
+
 	// 6) Configure Gin router with production settings
 	router := gin.New()
 
@@ -100,6 +105,10 @@ func Run() {
 		api.GET("/categories", categoryH.ListCategories)
 		api.GET("/categories/active", categoryH.ListActiveCategories)
 		api.GET("/categories/:categoryId", categoryH.GetCategory)
+
+		//Public Nominee APIs
+		api.GET("/nominees", nomineeH.GetAllNominees)
+		api.GET("/nominees/:id", nomineeH.GetNomineeDetails)
 	}
 
 	// Protected routes
@@ -118,6 +127,15 @@ func Run() {
 			adminCategories.POST("", categoryH.CreateCategory)
 			adminCategories.PUT("/:categoryId", categoryH.UpdateCategory)
 			adminCategories.DELETE("/:categoryId", categoryH.DeleteCategory)
+		}
+
+		adminNominees := protected.Group("/nominees", middleware.AdminMiddleware())
+		{
+			adminNominees.POST("", nomineeH.CreateNominee)
+			adminNominees.PUT("/:id", nomineeH.UpdateNominee)
+			adminNominees.DELETE("/:id", nomineeH.DeleteNominee)
+			adminNominees.POST("/:id/categories/:categoryId", nomineeH.AddNomineeCategory)
+			adminNominees.DELETE("/:id/categories/:categoryId", nomineeH.RemoveNomineeCategory)
 		}
 
 	}
