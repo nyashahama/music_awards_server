@@ -15,7 +15,4 @@ type Nominee struct {
 	ImageURL    string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
-	Categories  []Category `gorm:"many2many:nominee_categories;"`
-	Votes       []Vote     `gorm:"foreignKey:NomineeID;constraint:OnDelete:CASCADE;"`
 }
-

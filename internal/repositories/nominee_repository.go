@@ -13,9 +13,6 @@ type NomineeRepository interface {
 	GetAll() ([]models.Nominee, error)
 	Update(nominee *models.Nominee) error
 	Delete(id uuid.UUID) error
-	GetByCategory(categoryID uuid.UUID) ([]models.Nominee, error)
-	AddCategory(nomineeID, categoryID uuid.UUID) error
-	RemoveCategory(nomineeID, categoryID uuid.UUID) error
 }
 
 type nomineeRepository struct {
@@ -48,28 +45,4 @@ func (r *nomineeRepository) Update(nominee *models.Nominee) error {
 
 func (r *nomineeRepository) Delete(id uuid.UUID) error {
 	return r.db.Delete(&models.Nominee{}, "nominee_id = ?", id).Error
-}
-
-func (r *nomineeRepository) GetByCategory(categoryID uuid.UUID) ([]models.Nominee, error) {
-	var nominees []models.Nominee
-	err := r.db.Joins("JOIN nominee_categories ON nominees.nominee_id = nominee_categories.nominee_id").
-		Where("nominee_categories.category_id = ?", categoryID).
-		Preload("Categories").
-		Find(&nominees).Error
-	return nominees, err
-}
-
-func (r *nomineeRepository) AddCategory(nomineeID, categoryID uuid.UUID) error {
-	return r.db.Exec(`
-		INSERT INTO nominee_categories (nominee_id, category_id)
-		VALUES (?, ?)
-		ON CONFLICT (nominee_id, category_id) DO NOTHING
-	`, nomineeID, categoryID).Error
-}
-
-func (r *nomineeRepository) RemoveCategory(nomineeID, categoryID uuid.UUID) error {
-	return r.db.Exec(`
-		DELETE FROM nominee_categories 
-		WHERE nominee_id = ? AND category_id = ?
-	`, nomineeID, categoryID).Error
 }

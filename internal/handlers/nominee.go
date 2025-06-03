@@ -26,7 +26,6 @@ type createNomineeRequest struct {
 	Description string         `json:"description"`
 	SampleWorks datatypes.JSON `json:"sample_works"`
 	ImageURL    string         `json:"image_url"`
-	CategoryIDs []uuid.UUID    `json:"category_ids" binding:"required"`
 }
 
 func (h *NomineeHandler) RegisterRoutes(r *gin.Engine) {
@@ -42,8 +41,6 @@ func (h *NomineeHandler) RegisterRoutes(r *gin.Engine) {
 		adminNominees.POST("", h.CreateNominee)
 		adminNominees.PUT("/:id", h.UpdateNominee)
 		adminNominees.DELETE("/:id", h.DeleteNominee)
-		adminNominees.POST("/:id/categories/:categoryId", h.AddNomineeCategory)
-		adminNominees.DELETE("/:id/categories/:categoryId", h.RemoveNomineeCategory)
 	}
 }
 
@@ -62,7 +59,7 @@ func (h *NomineeHandler) CreateNominee(c *gin.Context) {
 		ImageURL:    req.ImageURL,
 	}
 
-	result, err := h.nomineeService.CreateNominee(c.Request.Context(), nominee, req.CategoryIDs)
+	result, err := h.nomineeService.CreateNominee(c.Request.Context(), nominee)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -77,33 +74,27 @@ func (h *NomineeHandler) UpdateNominee(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 		return
 	}
+
 	var updateData map[string]interface{}
-	if err := c.ShouldBindJSON(updateData); err != nil {
+	if err := c.ShouldBindJSON(&updateData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	delete(updateData, "nominee_id")
-	delete(updateData, "created_at")
-	delete(updateData, "updated_at")
-
 	nominee, err := h.nomineeService.UpdateNominee(c.Request.Context(), id, updateData)
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, nominee)
-
 }
 
 func (h *NomineeHandler) DeleteNominee(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"errror": "invalid ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 		return
-
 	}
 
 	if err := h.nomineeService.DeleteNominee(c.Request.Context(), id); err != nil {
@@ -116,20 +107,17 @@ func (h *NomineeHandler) DeleteNominee(c *gin.Context) {
 func (h *NomineeHandler) GetNomineeDetails(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"errror": "invalid ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 		return
-
 	}
 
-	nominee, err := h.nomineeService.GetNomineeDetails(c.Request.Context(), uuid.UUID(id))
+	nominee, err := h.nomineeService.GetNomineeDetails(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
-
 	}
 
 	c.JSON(http.StatusOK, nominee)
-
 }
 
 func (h *NomineeHandler) GetAllNominees(c *gin.Context) {
@@ -139,48 +127,6 @@ func (h *NomineeHandler) GetAllNominees(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, nominees)
-}
-
-func (h *NomineeHandler) AddNomineeCategory(c *gin.Context) {
-	nomineeID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid nominee ID"})
-		return
-	}
-
-	categoryID, err := uuid.Parse(c.Param("categoryId"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid category ID"})
-		return
-	}
-
-	if err := h.nomineeService.AddNomineeCategory(c.Request.Context(), nomineeID, categoryID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.Status(http.StatusNoContent)
-}
-
-func (h *NomineeHandler) RemoveNomineeCategory(c *gin.Context) {
-	nomineeID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid nominee ID"})
-		return
-	}
-
-	categoryID, err := uuid.Parse(c.Param("categoryId"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid category ID"})
-		return
-	}
-
-	if err := h.nomineeService.RemoveNomineeCategory(c.Request.Context(), nomineeID, categoryID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.Status(http.StatusNoContent)
 }
 
 func (h *NomineeHandler) SetNominationPeriod(c *gin.Context) {

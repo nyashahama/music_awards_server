@@ -134,8 +134,6 @@ func Run() {
 			adminNominees.POST("", nomineeH.CreateNominee)
 			adminNominees.PUT("/:id", nomineeH.UpdateNominee)
 			adminNominees.DELETE("/:id", nomineeH.DeleteNominee)
-			adminNominees.POST("/:id/categories/:categoryId", nomineeH.AddNomineeCategory)
-			adminNominees.DELETE("/:id/categories/:categoryId", nomineeH.RemoveNomineeCategory)
 		}
 
 	}
