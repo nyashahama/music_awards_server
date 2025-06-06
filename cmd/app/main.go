@@ -78,6 +78,8 @@ func Run() {
 	nomineeSvc := services.NewNomineeService(nomineeRepo)
 	nomineeH := handlers.NewNomineeHandler(nomineeSvc)
 
+	//Initialize nominee
+
 	// 6) Configure Gin router with production settings
 	router := gin.New()
 
@@ -136,6 +138,14 @@ func Run() {
 			adminNominees.DELETE("/:id", nomineeH.DeleteNominee)
 		}
 
+		/*	nomineeCategories := protected.Group("/nominees/:nominee_id/categories")
+			{
+				nomineeCategories.POST("", nomineeCategoryH.AddCategory)
+				//nomineeCategories.DELETE("/:category_id", nomineeCategoryH.RemoveCategory)
+				nomineeCategories.PUT("", nomineeCategoryH.SetCategories)
+				nomineeCategories.GET("", nomineeCategoryH.GetCategories)
+			}
+		*/
 	}
 
 	// 7) Configure server with proper timeouts

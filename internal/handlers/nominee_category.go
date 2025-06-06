@@ -86,7 +86,7 @@ func (h *NomineeCategoryHandler) SetCategories(c *gin.Context) {
 	}
 
 	var req struct {
-		CategoryIDs []uuid.UUID `json:"category_ids" binding:"required"`
+		CategoryIDs []uuid.UUID `json:"category_id" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -146,4 +146,3 @@ func handleNomineeCategoryError(c *gin.Context, err error) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 	}
 }
-
