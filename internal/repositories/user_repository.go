@@ -16,6 +16,8 @@ type UserRepository interface {
 	GetAll(ctx context.Context) ([]models.User, error)
 	Update(ctx context.Context, user *models.User) error
 	Delete(ctx context.Context, id uuid.UUID) error
+	DecrementAvailableVotes(ctx context.Context, userID uuid.UUID) error
+	IncrementAvailableVotes(ctx context.Context, userID uuid.UUID) error
 }
 
 type userRepository struct {
@@ -63,4 +65,26 @@ func (r *userRepository) Update(ctx context.Context, user *models.User) error {
 
 func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Delete(&models.User{}, "user_id = ?", id).Error
+}
+
+func (r *userRepository) DecrementAvailableVotes(ctx context.Context, userID uuid.UUID) error {
+	result := r.db.WithContext(ctx).
+		Model(&models.User{}).
+		Where("user_id = ? AND available_votes > 0", userID).
+		Update("available_votes", gorm.Expr("available_votes - 1"))
+
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("no votes available")
+	}
+	return nil
+}
+
+func (r *userRepository) IncrementAvailableVotes(ctx context.Context, userID uuid.UUID) error {
+	return r.db.WithContext(ctx).
+		Model(&models.User{}).
+		Where("user_id = ?", userID).
+		Update("available_votes", gorm.Expr("available_votes + 1")).Error
 }

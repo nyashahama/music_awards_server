@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/nyashahama/music-awards/internal/models"
@@ -30,21 +29,7 @@ func NewVoteRepository(db *gorm.DB) VoteRepository {
 }
 
 func (r *voteRepository) Create(ctx context.Context, vote *models.Vote) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var existing models.Vote
-		err := tx.WithContext(ctx).
-			Where("user_id = ? AND category_id = ?", vote.UserID, vote.CategoryID).
-			First(&existing).Error
-
-		if err == nil {
-			return fmt.Errorf("user already voted in this category")
-		}
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
-		}
-
-		return tx.WithContext(ctx).Create(vote).Error
-	})
+	return r.db.WithContext(ctx).Create(vote).Error
 }
 
 func (r *voteRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Vote, error) {

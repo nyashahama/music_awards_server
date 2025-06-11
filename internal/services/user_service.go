@@ -58,11 +58,12 @@ func (s *userService) Register(ctx context.Context, username, email, password st
 	}
 
 	user := &models.User{
-		UserID:       uuid.New(),
-		Username:     username,
-		Email:        email,
-		PasswordHash: hashedPassword,
-		Role:         "user",
+		UserID:         uuid.New(),
+		Username:       username,
+		Email:          email,
+		PasswordHash:   hashedPassword,
+		Role:           "user",
+		AvailableVotes: 5,
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {

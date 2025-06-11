@@ -17,17 +17,28 @@ type VotingMechanismService interface {
 	HasVotedInCategory(ctx context.Context, userID, categoryID uuid.UUID) (bool, error)
 	GetCategoryVotes(ctx context.Context, categoryID uuid.UUID) ([]models.Vote, error)
 	ValidateVotingPeriod(ctx context.Context, categoryID uuid.UUID) (bool, error)
+	DeleteVote(ctx context.Context, voteID uuid.UUID) error
+	GetAvailableVotes(ctx context.Context, userID uuid.UUID) (int, error)
 }
 
 type votingMechanismService struct {
 	voteRepo repositories.VoteRepository
+	userRepo repositories.UserRepository
 }
 
-func NewVotingMechanismService(voteRepo repositories.VoteRepository) VotingMechanismService {
-	return &votingMechanismService{voteRepo: voteRepo}
+func NewVotingMechanismService(voteRepo repositories.VoteRepository, userRepo repositories.UserRepository) VotingMechanismService {
+	return &votingMechanismService{
+		voteRepo: voteRepo,
+		userRepo: userRepo,
+	}
 }
 
 func (s *votingMechanismService) CastVote(ctx context.Context, userID, nomineeID, categoryID uuid.UUID) (*models.Vote, error) {
+	// Check available votes
+	if err := s.userRepo.DecrementAvailableVotes(ctx, userID); err != nil {
+		return nil, fmt.Errorf("insufficient votes: %w", err)
+	}
+
 	vote := &models.Vote{
 		VoteID:     uuid.New(),
 		UserID:     userID,
@@ -36,8 +47,11 @@ func (s *votingMechanismService) CastVote(ctx context.Context, userID, nomineeID
 	}
 
 	if err := s.voteRepo.Create(ctx, vote); err != nil {
+		// Rollback vote count if vote creation fails
+		s.userRepo.IncrementAvailableVotes(ctx, userID)
 		return nil, fmt.Errorf("failed to cast vote: %w", err)
 	}
+
 	return vote, nil
 }
 
@@ -95,5 +109,30 @@ func (s *votingMechanismService) GetCategoryVotes(ctx context.Context, categoryI
 func (s *votingMechanismService) ValidateVotingPeriod(ctx context.Context, categoryID uuid.UUID) (bool, error) {
 	// TODO: implement this
 	return true, nil
+}
+
+func (s *votingMechanismService) DeleteVote(ctx context.Context, voteID uuid.UUID) error {
+	vote, err := s.voteRepo.GetByID(ctx, voteID)
+	if err != nil {
+		return err
+	}
+
+	if err := s.voteRepo.Delete(ctx, voteID); err != nil {
+		return err
+	}
+
+	// Return vote to user
+	if err := s.userRepo.IncrementAvailableVotes(ctx, vote.UserID); err != nil {
+		return fmt.Errorf("failed to return vote: %w", err)
+	}
+	return nil
+}
+
+func (s *votingMechanismService) GetAvailableVotes(ctx context.Context, userID uuid.UUID) (int, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	return user.AvailableVotes, nil
 }
 
