@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/nyashahama/music-awards/internal/models"
@@ -33,6 +34,9 @@ func (r *categoryRepository) Create(ctx context.Context, category *models.Catego
 func (r *categoryRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Category, error) {
 	var category models.Category
 	err := r.db.WithContext(ctx).First(&category, "category_id = ?", id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
 	return &category, err
 }
 

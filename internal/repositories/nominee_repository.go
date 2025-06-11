@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/nyashahama/music-awards/internal/models"
 	"gorm.io/gorm"
@@ -8,11 +10,11 @@ import (
 
 // Nominee Repository
 type NomineeRepository interface {
-	Create(nominee *models.Nominee) error
-	GetByID(id uuid.UUID) (*models.Nominee, error)
-	GetAll() ([]models.Nominee, error)
-	Update(nominee *models.Nominee) error
-	Delete(id uuid.UUID) error
+	Create(ctx context.Context, nominee *models.Nominee) error
+	GetByID(ctx context.Context, id uuid.UUID) (*models.Nominee, error)
+	GetAll(ctx context.Context) ([]models.Nominee, error)
+	Update(ctx context.Context, nominee *models.Nominee) error
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 type nomineeRepository struct {
@@ -23,28 +25,30 @@ func NewNomineeRepository(db *gorm.DB) NomineeRepository {
 	return &nomineeRepository{db: db}
 }
 
-func (r *nomineeRepository) Create(nominee *models.Nominee) error {
-	return r.db.Create(nominee).Error
+func (r *nomineeRepository) Create(ctx context.Context, nominee *models.Nominee) error {
+	return r.db.WithContext(ctx).Create(nominee).Error
 }
 
-func (r *nomineeRepository) GetByID(id uuid.UUID) (*models.Nominee, error) {
+func (r *nomineeRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Nominee, error) {
 	var nominee models.Nominee
-	err := r.db.Preload("Categories", func(db *gorm.DB) *gorm.DB {
-		return db.Select("category_id", "name")
+	err := r.db.WithContext(ctx).Preload("Categories", func(db *gorm.DB) *gorm.DB {
+		return db.WithContext(ctx).Select("category_id", "name")
 	}).First(&nominee, "nominee_id = ?", id).Error
 	return &nominee, err
 }
 
-func (r *nomineeRepository) GetAll() ([]models.Nominee, error) {
+func (r *nomineeRepository) GetAll(ctx context.Context) ([]models.Nominee, error) {
 	var nominees []models.Nominee
-	err := r.db.Preload("Categories").Find(&nominees).Error
+	err := r.db.WithContext(ctx).Preload("Categories", func(db *gorm.DB) *gorm.DB {
+		return db.Select("category_id", "name")
+	}).Find(&nominees).Error
 	return nominees, err
 }
 
-func (r *nomineeRepository) Update(nominee *models.Nominee) error {
-	return r.db.Session(&gorm.Session{FullSaveAssociations: true}).Save(nominee).Error
+func (r *nomineeRepository) Update(ctx context.Context, nominee *models.Nominee) error {
+	return r.db.WithContext(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Save(nominee).Error
 }
 
-func (r *nomineeRepository) Delete(id uuid.UUID) error {
-	return r.db.Delete(&models.Nominee{}, "nominee_id = ?", id).Error
+func (r *nomineeRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&models.Nominee{}, "nominee_id = ?", id).Error
 }
