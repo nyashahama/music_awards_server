@@ -35,7 +35,7 @@ func (r *userRepository) GetByID(id uuid.UUID) (*models.User, error) {
 
 func (r *userRepository) GetByEmail(email string) (*models.User, error) {
 	var user models.User
-	err := r.db.First(&user, "email = ?", email).Error
+	err := r.db.Where("email = ?", email).Take(&user).Error
 	return &user, err
 }
 
