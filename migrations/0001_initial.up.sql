@@ -22,8 +22,8 @@ CREATE TABLE categories (
   category_id   UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
   name          VARCHAR(255) NOT NULL UNIQUE,
   description   TEXT,
-  created_at    TIMESTAMP   NOT NULL DEFAULT now(),
-  updated_at    TIMESTAMP   NOT NULL DEFAULT now()
+  created_at     TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP, -- FIXED
+  updated_at     TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP  -- FIXED
 );
 
 CREATE TABLE nominees (
@@ -32,8 +32,8 @@ CREATE TABLE nominees (
   description   TEXT,
   sample_works  JSONB,
   image_url     VARCHAR(500),
-  created_at    TIMESTAMP   NOT NULL DEFAULT now(),
-  updated_at    TIMESTAMP   NOT NULL DEFAULT now()
+  created_at     TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP, -- FIXED
+  updated_at     TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP  -- FIXED
 );
 
 CREATE TABLE nominee_categories (
@@ -49,7 +49,7 @@ CREATE TABLE votes (
   user_id       UUID       NOT NULL,
   nominee_id    UUID       NOT NULL,
   category_id   UUID       NOT NULL,
-  created_at    TIMESTAMP  NOT NULL DEFAULT now(),
+  created_at     TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP, -- FIXED
   FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
   FOREIGN KEY (nominee_id, category_id) REFERENCES nominee_categories(nominee_id, category_id) ON DELETE CASCADE,
   UNIQUE (user_id, category_id)

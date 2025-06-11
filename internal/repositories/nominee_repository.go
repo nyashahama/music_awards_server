@@ -29,7 +29,9 @@ func (r *nomineeRepository) Create(nominee *models.Nominee) error {
 
 func (r *nomineeRepository) GetByID(id uuid.UUID) (*models.Nominee, error) {
 	var nominee models.Nominee
-	err := r.db.Preload("Categories").First(&nominee, "nominee_id = ?", id).Error
+	err := r.db.Preload("Categories", func(db *gorm.DB) *gorm.DB {
+		return db.Select("category_id", "name")
+	}).First(&nominee, "nominee_id = ?", id).Error
 	return &nominee, err
 }
 

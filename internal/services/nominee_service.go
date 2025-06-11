@@ -2,13 +2,15 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/nyashahama/music-awards/internal/models"
 	"github.com/nyashahama/music-awards/internal/repositories"
-	"gorm.io/datatypes"
+	// "gorm.io/datatypes"
 )
 
 // NomineeService handles nominee-related operations
@@ -38,33 +40,40 @@ func (s *nomineeService) CreateNominee(ctx context.Context, nominee models.Nomin
 }
 
 func (s *nomineeService) UpdateNominee(ctx context.Context, nomineeID uuid.UUID, updateData map[string]interface{}) (*models.Nominee, error) {
+	// 1) fetch the existing record
 	nominee, err := s.repo.GetByID(nomineeID)
 	if err != nil {
 		return nil, err
 	}
 
+	// 2) apply any scalar updates
 	if name, ok := updateData["name"].(string); ok {
 		nominee.Name = name
 	}
-
 	if desc, ok := updateData["description"].(string); ok {
 		nominee.Description = desc
 	}
-
-	if works, ok := updateData["sample_works"].(datatypes.JSON); ok {
-		nominee.SampleWorks = works
-	}
-
 	if img, ok := updateData["image_url"].(string); ok {
 		nominee.ImageURL = img
 	}
 
+	// 3) marshal & assign the JSONB field
+	if works, ok := updateData["sample_works"]; ok {
+		raw, err := json.Marshal(works)
+		if err != nil {
+			return nil, fmt.Errorf("could not marshal sample_works: %w", err)
+		}
+		nominee.SampleWorks = json.RawMessage(raw)
+	}
+
+	// 4) persist
 	if err := s.repo.Update(nominee); err != nil {
 		return nil, err
 	}
 
 	return nominee, nil
 }
+
 func (s *nomineeService) DeleteNominee(ctx context.Context, nomineeID uuid.UUID) error {
 	return s.repo.Delete(nomineeID)
 }

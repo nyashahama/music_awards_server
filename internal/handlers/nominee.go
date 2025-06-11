@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -8,7 +9,7 @@ import (
 	"github.com/nyashahama/music-awards/internal/middleware"
 	"github.com/nyashahama/music-awards/internal/models"
 	"github.com/nyashahama/music-awards/internal/services"
-	"gorm.io/datatypes"
+	// "gorm.io/datatypes"
 )
 
 type NomineeHandler struct {
@@ -22,10 +23,10 @@ func NewNomineeHandler(nomineeService services.NomineeService) *NomineeHandler {
 //will create a DTO later
 
 type createNomineeRequest struct {
-	Name        string         `json:"name" binding:"required"`
-	Description string         `json:"description"`
-	SampleWorks datatypes.JSON `json:"sample_works"`
-	ImageURL    string         `json:"image_url"`
+	Name        string          `json:"name" binding:"required"`
+	Description string          `json:"description"`
+	SampleWorks json.RawMessage `json:"sample_works"`
+	ImageURL    string          `json:"image_url"`
 }
 
 func (h *NomineeHandler) RegisterRoutes(r *gin.Engine) {
@@ -55,7 +56,7 @@ func (h *NomineeHandler) CreateNominee(c *gin.Context) {
 	nominee := models.Nominee{
 		Name:        req.Name,
 		Description: req.Description,
-		SampleWorks: datatypes.JSON(req.SampleWorks),
+		SampleWorks: req.SampleWorks,
 		ImageURL:    req.ImageURL,
 	}
 

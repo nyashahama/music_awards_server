@@ -23,71 +23,39 @@ func NewNomineeCategoryRepository(db *gorm.DB) NomineeCategoryRepository {
 }
 
 func (r *nomineeCategoryRepository) AddCategory(nomineeId, categoryId uuid.UUID) error {
-	return r.db.Exec(`
-		INSERT INTO nominee_categories (nominee_id, category_id)
-		VALUES (?, ?)
-		ON CONFLICT (nominee_id, category_id) DO NOTHING
-	`, nomineeId, categoryId).Error
+	return r.db.Model(&models.Nominee{NomineeID: nomineeId}).
+		Association("Categories").
+		Append(&models.Category{CategoryID: categoryId})
 }
 
 func (r *nomineeCategoryRepository) RemoveCategory(nomineeId, categoryId uuid.UUID) error {
-	return r.db.Exec(`
-		DELETE FROM nominee_categories
-		WHERE nominee_id = ? AND category_id = ?
-		`, nomineeId, categoryId).Error
+	return r.db.Model(&models.Nominee{NomineeID: nomineeId}).
+		Association("Categories").
+		Delete(&models.Category{CategoryID: categoryId})
 }
 
 func (r *nomineeCategoryRepository) GetCategoriesForNominee(nomineeId uuid.UUID) ([]models.Category, error) {
 	var categories []models.Category
-	err := r.db.Raw(`
-		SELECT n.*
-		FROM nominees n 
-		JOIN nominee_categories nc ON n.nominee_id = nc.nominee_id
-		WHERE nc.category_id = ?
-		`, nomineeId).Scan(&categories).Error
+	err := r.db.Joins("JOIN nominee_categories ON nominee_categories.category_id = categories.category_id").
+		Where("nominee_categories.nominee_id = ?", nomineeId).
+		Find(&categories).Error
 	return categories, err
 }
 
 func (r *nomineeCategoryRepository) GetNomineesForCategory(categoryID uuid.UUID) ([]models.Nominee, error) {
 	var nominees []models.Nominee
-	err := r.db.Raw(`
-		SELECT n.* 
-		FROM nominees n
-		JOIN nominee_categories nc ON n.nominee_id = nc.nominee_id
-		WHERE nc.category_id = ?
-	`, categoryID).Scan(&nominees).Error
+	err := r.db.Joins("JOIN nominee_categories ON nominee_categories.nominee_id = nominees.nominee_id").
+		Where("nominee_categories.category_id = ?", categoryID).
+		Find(&nominees).Error
 	return nominees, err
 }
-
 func (r *nomineeCategoryRepository) SetCategories(nomineeId uuid.UUID, categoryIds []uuid.UUID) error {
-	// Start transaction
-	tx := r.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// Clear existing categories
-	if err := tx.Exec(`
-		DELETE FROM nominee_categories 
-		WHERE nominee_id = ?
-	`, nomineeId).Error; err != nil {
-		tx.Rollback()
-		return err
+	categories := make([]models.Category, len(categoryIds))
+	for i, id := range categoryIds {
+		categories[i] = models.Category{CategoryID: id}
 	}
 
-	// Add new categories
-	for _, categoryId := range categoryIds {
-		if err := tx.Exec(`
-			INSERT INTO nominee_categories (nominee_id, category_id)
-			VALUES (?, ?)
-			ON CONFLICT (nominee_id, category_id) DO NOTHING
-		`, nomineeId, categoryId).Error; err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	return tx.Commit().Error
+	return r.db.Model(&models.Nominee{NomineeID: nomineeId}).
+		Association("Categories").
+		Replace(categories)
 }

@@ -35,18 +35,18 @@ func (r *userRepository) GetByID(id uuid.UUID) (*models.User, error) {
 
 func (r *userRepository) GetByEmail(email string) (*models.User, error) {
 	var user models.User
-	err := r.db.Select("user_id", "password_hash", "role", "email"). // Only essential fields
-										Where("email = ?", email).
-										Take(&user).Error
+	err := r.db.Select("user_id", "password_hash", "role", "email").
+		Where("email = ?", email).
+		Take(&user).Error
 	return &user, err
 }
 
 func (r *userRepository) GetAll() ([]models.User, error) {
 	var users []models.User
-	err := r.db.Find(&users).Error
+	// Exclude sensitive fields
+	err := r.db.Select("user_id", "username", "email", "role", "created_at").Find(&users).Error
 	return users, err
 }
-
 func (r *userRepository) Update(user *models.User) error {
 	return r.db.Save(user).Error
 }

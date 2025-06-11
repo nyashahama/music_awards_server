@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/nyashahama/music-awards/internal/models"
 	"gorm.io/gorm"
@@ -8,12 +10,12 @@ import (
 
 // Category Repository
 type CategoryRepository interface {
-	Create(category *models.Category) error
-	GetByID(id uuid.UUID) (*models.Category, error)
-	GetByName(name string) (*models.Category, error)
-	GetAll() ([]models.Category, error)
-	Update(category *models.Category) error
-	Delete(id uuid.UUID) error
+	Create(ctx context.Context, category *models.Category) error
+	GetByID(ctx context.Context, id uuid.UUID) (*models.Category, error)
+	GetByName(ctx context.Context, name string) (*models.Category, error)
+	GetAll(ctx context.Context) ([]models.Category, error)
+	Update(ctx context.Context, category *models.Category) error
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 type categoryRepository struct {
@@ -24,32 +26,32 @@ func NewCategoryRepository(db *gorm.DB) CategoryRepository {
 	return &categoryRepository{db: db}
 }
 
-func (r *categoryRepository) Create(category *models.Category) error {
-	return r.db.Create(category).Error
+func (r *categoryRepository) Create(ctx context.Context, category *models.Category) error {
+	return r.db.WithContext(ctx).Create(category).Error
 }
 
-func (r *categoryRepository) GetByID(id uuid.UUID) (*models.Category, error) {
+func (r *categoryRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Category, error) {
 	var category models.Category
-	err := r.db.First(&category, "category_id = ?", id).Error
+	err := r.db.WithContext(ctx).First(&category, "category_id = ?", id).Error
 	return &category, err
 }
 
-func (r *categoryRepository) GetByName(name string) (*models.Category, error) {
+func (r *categoryRepository) GetByName(ctx context.Context, name string) (*models.Category, error) {
 	var category models.Category
-	err := r.db.First(&category, "name = ?", name).Error
+	err := r.db.WithContext(ctx).First(&category, "name = ?", name).Error
 	return &category, err
 }
 
-func (r *categoryRepository) GetAll() ([]models.Category, error) {
+func (r *categoryRepository) GetAll(ctx context.Context) ([]models.Category, error) {
 	var categories []models.Category
-	err := r.db.Preload("Votes").Find(&categories).Error
+	err := r.db.WithContext(ctx).Preload("Nominees").Find(&categories).Error
 	return categories, err
 }
 
-func (r *categoryRepository) Update(category *models.Category) error {
-	return r.db.Save(category).Error
+func (r *categoryRepository) Update(ctx context.Context, category *models.Category) error {
+	return r.db.WithContext(ctx).Save(category).Error
 }
 
-func (r *categoryRepository) Delete(id uuid.UUID) error {
-	return r.db.Delete(&models.Category{}, "category_id = ?", id).Error
+func (r *categoryRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&models.Category{}, "category_id = ?", id).Error
 }
