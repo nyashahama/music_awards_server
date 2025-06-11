@@ -11,7 +11,7 @@ import (
 	"github.com/nyashahama/music-awards/internal/security"
 	"github.com/nyashahama/music-awards/internal/validation"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
+	//"gorm.io/gorm"
 )
 
 // UserService handles user-related business logic
@@ -36,24 +36,21 @@ func NewUserService(userRepo repositories.UserRepository) UserService {
 }
 
 func (s *userService) Register(ctx context.Context, username, email, password string) (*models.User, error) {
-	// 1) Validate email format
 	if !validation.ValidateEmail(email) {
 		return nil, errors.New("invalid email format")
 	}
 
-	// 2) Validate password strength
 	if err := validation.ValidatePassword(password); err != nil {
 		return nil, fmt.Errorf("password validation failed: %w", err)
 	}
 
-	// Check for existing email
-	_, err := s.userRepo.GetByEmail(email)
-	if err == nil {
+	existing, err := s.userRepo.GetByEmail(ctx, email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check email: %w", err)
+	}
+	if existing != nil {
 		return nil, errors.New("email already exists")
 	}
-	// if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-	// 	return nil, fmt.Errorf("failed to check email: %w", err)
-	// }
 
 	hashedPassword, err := hashPassword(password)
 	if err != nil {
@@ -68,23 +65,25 @@ func (s *userService) Register(ctx context.Context, username, email, password st
 		Role:         "user",
 	}
 
-	if err := s.userRepo.Create(user); err != nil {
+	if err := s.userRepo.Create(ctx, user); err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 	return user, nil
 }
 
 func (s *userService) Login(ctx context.Context, email, password string) (string, error) {
-	user, err := s.userRepo.GetByEmail(email)
+	user, err := s.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", errors.New("invalid credentials")
-		}
 		return "", fmt.Errorf("failed to get user: %w", err)
 	}
+	if user == nil {
+		return "", errors.New("invalid credentials")
+	}
+
 	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) != nil {
 		return "", errors.New("invalid credentials")
 	}
+
 	token, err := security.GenerateJWT(user.UserID, user.Username, user.Role, user.Email)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate token: %w", err)
@@ -93,77 +92,77 @@ func (s *userService) Login(ctx context.Context, email, password string) (string
 }
 
 func (s *userService) GetUserProfile(ctx context.Context, userID uuid.UUID) (*models.User, error) {
-	user, err := s.userRepo.GetByID(userID)
+	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user: %v", err)
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
 	}
 	return user, nil
 }
 
 func (s *userService) UpdateUser(ctx context.Context, userID uuid.UUID, updateData map[string]interface{}) (*models.User, error) {
-	user, err := s.userRepo.GetByID(userID)
+	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user: %v", err)
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
 	}
 
 	if username, ok := updateData["username"].(string); ok {
 		user.Username = username
-	} else if updateData["username"] != nil {
-		return nil, errors.New("invalid type for username")
 	}
 
 	if email, ok := updateData["email"].(string); ok {
-		existingUser, err := s.userRepo.GetByEmail(email)
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("failed to check email: %v", err)
+		existing, err := s.userRepo.GetByEmail(ctx, email)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check email: %w", err)
 		}
-		if existingUser != nil && existingUser.UserID != user.UserID {
+		if existing != nil && existing.UserID != user.UserID {
 			return nil, errors.New("email already in use")
 		}
 		user.Email = email
-	} else if updateData["email"] != nil {
-		return nil, errors.New("invalid type for email")
 	}
 
 	if password, ok := updateData["password"].(string); ok {
 		hashedPassword, err := hashPassword(password)
 		if err != nil {
-			return nil, fmt.Errorf("failed to hash password: %v", err)
+			return nil, fmt.Errorf("failed to hash password: %w", err)
 		}
 		user.PasswordHash = hashedPassword
-	} else if updateData["password"] != nil {
-		return nil, errors.New("invalid type for password")
 	}
 
-	if err := s.userRepo.Update(user); err != nil {
-		return nil, fmt.Errorf("failed to update user: %v", err)
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return nil, fmt.Errorf("failed to update user: %w", err)
 	}
 
 	return user, nil
 }
 
 func (s *userService) DeleteUser(ctx context.Context, userID uuid.UUID) error {
-	if err := s.userRepo.Delete(userID); err != nil {
-		return fmt.Errorf("failed to delete user: %v", err)
+	if err := s.userRepo.Delete(ctx, userID); err != nil {
+		return fmt.Errorf("failed to delete user: %w", err)
 	}
 	return nil
 }
 
 func (s *userService) PromoteToAdmin(ctx context.Context, userID uuid.UUID) error {
-	user, err := s.userRepo.GetByID(userID)
+	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to get user: %w", err)
 	}
+	if user == nil {
+		return errors.New("user not found")
+	}
+
 	user.Role = "admin"
-	return s.userRepo.Update(user)
+	return s.userRepo.Update(ctx, user)
 }
 
 func (s *userService) GetAllUsers(ctx context.Context) ([]models.User, error) {
-	users, err := s.userRepo.GetAll()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get all users: %w", err)
-	}
-	return users, nil
+	return s.userRepo.GetAll(ctx)
 }
 
 func hashPassword(password string) (string, error) {

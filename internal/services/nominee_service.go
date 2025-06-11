@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
+	//"time"
 
 	"github.com/google/uuid"
 	"github.com/nyashahama/music-awards/internal/models"
@@ -33,20 +33,21 @@ func NewNomineeService(repo repositories.NomineeRepository) NomineeService {
 }
 
 func (s *nomineeService) CreateNominee(ctx context.Context, nominee models.Nominee) (*models.Nominee, error) {
-	if err := s.repo.Create(&nominee); err != nil {
-		return nil, err
+	if err := s.repo.Create(ctx, &nominee); err != nil {
+		return nil, fmt.Errorf("failed to create nominee: %w", err)
 	}
-	return s.repo.GetByID(nominee.NomineeID)
+	return s.repo.GetByID(ctx, nominee.NomineeID)
 }
 
 func (s *nomineeService) UpdateNominee(ctx context.Context, nomineeID uuid.UUID, updateData map[string]interface{}) (*models.Nominee, error) {
-	// 1) fetch the existing record
-	nominee, err := s.repo.GetByID(nomineeID)
+	nominee, err := s.repo.GetByID(ctx, nomineeID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get nominee: %w", err)
+	}
+	if nominee == nil {
+		return nil, errors.New("nominee not found")
 	}
 
-	// 2) apply any scalar updates
 	if name, ok := updateData["name"].(string); ok {
 		nominee.Name = name
 	}
@@ -57,7 +58,6 @@ func (s *nomineeService) UpdateNominee(ctx context.Context, nomineeID uuid.UUID,
 		nominee.ImageURL = img
 	}
 
-	// 3) marshal & assign the JSONB field
 	if works, ok := updateData["sample_works"]; ok {
 		raw, err := json.Marshal(works)
 		if err != nil {
@@ -66,24 +66,28 @@ func (s *nomineeService) UpdateNominee(ctx context.Context, nomineeID uuid.UUID,
 		nominee.SampleWorks = json.RawMessage(raw)
 	}
 
-	// 4) persist
-	if err := s.repo.Update(nominee); err != nil {
-		return nil, err
+	if err := s.repo.Update(ctx, nominee); err != nil {
+		return nil, fmt.Errorf("failed to update nominee: %w", err)
 	}
 
 	return nominee, nil
 }
 
 func (s *nomineeService) DeleteNominee(ctx context.Context, nomineeID uuid.UUID) error {
-	return s.repo.Delete(nomineeID)
-}
-func (s *nomineeService) GetNomineeDetails(ctx context.Context, nomineeID uuid.UUID) (*models.Nominee, error) {
-	return s.repo.GetByID(nomineeID)
-}
-func (s *nomineeService) GetAllNominees(ctx context.Context) ([]models.Nominee, error) {
-	return s.repo.GetAll()
+	return s.repo.Delete(ctx, nomineeID)
 }
 
-func (s *nomineeService) SetNominationPeriod(ctx context.Context, categoryID uuid.UUID, start, end time.Time) error {
-	return errors.New("cool for now")
+func (s *nomineeService) GetNomineeDetails(ctx context.Context, nomineeID uuid.UUID) (*models.Nominee, error) {
+	nominee, err := s.repo.GetByID(ctx, nomineeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get nominee: %w", err)
+	}
+	if nominee == nil {
+		return nil, errors.New("nominee not found")
+	}
+	return nominee, nil
+}
+
+func (s *nomineeService) GetAllNominees(ctx context.Context) ([]models.Nominee, error) {
+	return s.repo.GetAll(ctx)
 }

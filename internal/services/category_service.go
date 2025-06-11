@@ -3,10 +3,11 @@ package services
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/nyashahama/music-awards/internal/models"
 	"github.com/nyashahama/music-awards/internal/repositories"
-	"time"
 )
 
 // CategoryService handles category operations
@@ -26,6 +27,7 @@ type categoryService struct {
 func NewCategoryService(repo repositories.CategoryRepository) CategoryService {
 	return &categoryService{repo: repo}
 }
+
 func (s *categoryService) CreateCategory(ctx context.Context, name, description string) (*models.Category, error) {
 	category := &models.Category{
 		CategoryID:  uuid.New(),
@@ -41,9 +43,12 @@ func (s *categoryService) CreateCategory(ctx context.Context, name, description 
 }
 
 func (s *categoryService) UpdateCategory(ctx context.Context, categoryID uuid.UUID, name, description string) (*models.Category, error) {
-	category, err := s.repo.GetByID(ctx, categoryID) // Pass context
+	category, err := s.repo.GetByID(ctx, categoryID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get category: %w", err)
+	}
+	if category == nil {
+		return nil, fmt.Errorf("category not found")
 	}
 
 	category.Name = name
@@ -57,21 +62,28 @@ func (s *categoryService) UpdateCategory(ctx context.Context, categoryID uuid.UU
 }
 
 func (s *categoryService) DeleteCategory(ctx context.Context, categoryID uuid.UUID) error {
-	return s.repo.Delete(ctx, categoryID) // Pass context
+	return s.repo.Delete(ctx, categoryID)
 }
 
 func (s *categoryService) GetCategoryDetails(ctx context.Context, categoryID uuid.UUID) (*models.Category, error) {
-	return s.repo.GetByID(ctx, categoryID) // Pass context
+	category, err := s.repo.GetByID(ctx, categoryID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get category: %w", err)
+	}
+	if category == nil {
+		return nil, fmt.Errorf("category not found")
+	}
+	return category, nil
 }
 
 func (s *categoryService) ListAllCategories(ctx context.Context) ([]models.Category, error) {
-	return s.repo.GetAll(ctx) // Pass context
+	return s.repo.GetAll(ctx)
 }
 
 func (s *categoryService) ListActiveCategories(ctx context.Context) ([]models.Category, error) {
-	allCategories, err := s.repo.GetAll(ctx) // Pass context
+	allCategories, err := s.repo.GetAll(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get categories: %w", err)
 	}
 
 	var activeCategories []models.Category
