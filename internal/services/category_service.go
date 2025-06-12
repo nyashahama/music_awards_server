@@ -2,12 +2,17 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/nyashahama/music-awards/internal/models"
 	"github.com/nyashahama/music-awards/internal/repositories"
+)
+
+var (
+	ErrCategoryNotFound = errors.New("category not found")
+	ErrCategoryExists   = errors.New("category name already exists")
 )
 
 // CategoryService handles category operations
@@ -29,13 +34,21 @@ func NewCategoryService(repo repositories.CategoryRepository) CategoryService {
 }
 
 func (s *categoryService) CreateCategory(ctx context.Context, name, description string) (*models.Category, error) {
+	// Check for existing category
+	existing, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check category name: %w", err)
+	}
+	if existing != nil {
+		return nil, ErrCategoryExists
+	}
+
 	category := &models.Category{
 		CategoryID:  uuid.New(),
 		Name:        name,
 		Description: description,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
 	}
+
 	if err := s.repo.Create(ctx, category); err != nil {
 		return nil, fmt.Errorf("failed to create category: %w", err)
 	}
@@ -48,19 +61,30 @@ func (s *categoryService) UpdateCategory(ctx context.Context, categoryID uuid.UU
 		return nil, fmt.Errorf("failed to get category: %w", err)
 	}
 	if category == nil {
-		return nil, fmt.Errorf("category not found")
+		return nil, ErrCategoryNotFound
 	}
 
-	category.Name = name
-	category.Description = description
-	category.UpdatedAt = time.Now()
+	// Check for name conflict if name changed
+	if name != "" && name != category.Name {
+		existing, err := s.repo.GetByName(ctx, name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check category name: %w", err)
+		}
+		if existing != nil {
+			return nil, ErrCategoryExists
+		}
+		category.Name = name
+	}
+
+	if description != "" {
+		category.Description = description
+	}
 
 	if err := s.repo.Update(ctx, category); err != nil {
 		return nil, fmt.Errorf("failed to update category: %w", err)
 	}
 	return category, nil
 }
-
 func (s *categoryService) DeleteCategory(ctx context.Context, categoryID uuid.UUID) error {
 	return s.repo.Delete(ctx, categoryID)
 }

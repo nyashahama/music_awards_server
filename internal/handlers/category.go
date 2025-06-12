@@ -6,8 +6,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nyashahama/music-awards/internal/dtos"
 	"github.com/nyashahama/music-awards/internal/middleware"
 	"github.com/nyashahama/music-awards/internal/services"
+
 	"gorm.io/gorm"
 )
 
@@ -35,11 +37,7 @@ func (h *CategoryHandler) RegisterRoutes(r *gin.Engine) {
 }
 
 func (h *CategoryHandler) CreateCategory(c *gin.Context) {
-	var req struct {
-		Name        string `json:"name" binding:"required"`
-		Description string `json:"description" binding:"required"`
-	}
-
+	var req dtos.CreateCategoryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -51,7 +49,7 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, category)
+	c.JSON(http.StatusCreated, dtos.NewCategoryResponse(category))
 }
 
 func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
@@ -61,23 +59,30 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 		return
 	}
 
-	var req struct {
-		Name        string `json:"name" binding:"required"`
-		Description string `json:"description" binding:"required"`
-	}
-
+	var req dtos.UpdateCategoryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	category, err := h.categoryService.UpdateCategory(c.Request.Context(), categoryID, req.Name, req.Description)
+	// Handle pointer fields
+	name := ""
+	if req.Name != nil {
+		name = *req.Name
+	}
+
+	description := ""
+	if req.Description != nil {
+		description = *req.Description
+	}
+
+	category, err := h.categoryService.UpdateCategory(c.Request.Context(), categoryID, name, description)
 	if err != nil {
 		handleCategoryError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, category)
+	c.JSON(http.StatusOK, dtos.NewCategoryResponse(category))
 }
 
 func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
@@ -108,7 +113,7 @@ func (h *CategoryHandler) GetCategory(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, category)
+	c.JSON(http.StatusOK, dtos.NewCategoryResponse(category))
 }
 
 func (h *CategoryHandler) ListCategories(c *gin.Context) {
@@ -118,7 +123,11 @@ func (h *CategoryHandler) ListCategories(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, categories)
+	response := make([]dtos.CategoryResponse, len(categories))
+	for i, cat := range categories {
+		response[i] = dtos.NewCategoryResponse(&cat)
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *CategoryHandler) ListActiveCategories(c *gin.Context) {
@@ -132,14 +141,13 @@ func (h *CategoryHandler) ListActiveCategories(c *gin.Context) {
 }
 
 func handleCategoryError(c *gin.Context, err error) {
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "category not found"})
-		return
-	}
-
-	switch err.Error() {
-	case "category name already exists":
+	switch {
+	case errors.Is(err, services.ErrCategoryNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	case errors.Is(err, services.ErrCategoryExists):
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": "category not found"})
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 	}
