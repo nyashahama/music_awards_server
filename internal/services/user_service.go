@@ -11,7 +11,13 @@ import (
 	"github.com/nyashahama/music-awards/internal/security"
 	"github.com/nyashahama/music-awards/internal/validation"
 	"golang.org/x/crypto/bcrypt"
-	//"gorm.io/gorm"
+)
+
+var (
+	ErrEmailExists        = errors.New("email already exists")
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrPasswordValidation = errors.New("password validation failed")
+	ErrInvalidID          = errors.New("invalid id")
 )
 
 // UserService handles user-related business logic
@@ -30,18 +36,16 @@ type userService struct {
 }
 
 func NewUserService(userRepo repositories.UserRepository) UserService {
-	return &userService{
-		userRepo: userRepo,
-	}
+	return &userService{userRepo: userRepo}
 }
 
 func (s *userService) Register(ctx context.Context, username, email, password string) (*models.User, error) {
 	if !validation.ValidateEmail(email) {
-		return nil, errors.New("invalid email format")
+		return nil, fmt.Errorf("invalid email format")
 	}
 
 	if err := validation.ValidatePassword(password); err != nil {
-		return nil, fmt.Errorf("password validation failed: %w", err)
+		return nil, fmt.Errorf("%w: %s", ErrPasswordValidation, err)
 	}
 
 	existing, err := s.userRepo.GetByEmail(ctx, email)
@@ -49,7 +53,7 @@ func (s *userService) Register(ctx context.Context, username, email, password st
 		return nil, fmt.Errorf("failed to check email: %w", err)
 	}
 	if existing != nil {
-		return nil, errors.New("email already exists")
+		return nil, ErrEmailExists
 	}
 
 	hashedPassword, err := hashPassword(password)
@@ -78,11 +82,11 @@ func (s *userService) Login(ctx context.Context, email, password string) (string
 		return "", fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
-		return "", errors.New("invalid credentials")
+		return "", ErrInvalidCredentials
 	}
 
 	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) != nil {
-		return "", errors.New("invalid credentials")
+		return "", ErrInvalidCredentials
 	}
 
 	token, err := security.GenerateJWT(user.UserID, user.Username, user.Role, user.Email)
@@ -98,7 +102,7 @@ func (s *userService) GetUserProfile(ctx context.Context, userID uuid.UUID) (*mo
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
-		return nil, errors.New("user not found")
+		return nil, ErrInvalidID
 	}
 	return user, nil
 }
@@ -109,7 +113,7 @@ func (s *userService) UpdateUser(ctx context.Context, userID uuid.UUID, updateDa
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
-		return nil, errors.New("user not found")
+		return nil, ErrInvalidID
 	}
 
 	if username, ok := updateData["username"].(string); ok {
@@ -122,7 +126,7 @@ func (s *userService) UpdateUser(ctx context.Context, userID uuid.UUID, updateDa
 			return nil, fmt.Errorf("failed to check email: %w", err)
 		}
 		if existing != nil && existing.UserID != user.UserID {
-			return nil, errors.New("email already in use")
+			return nil, ErrEmailExists
 		}
 		user.Email = email
 	}
@@ -143,6 +147,7 @@ func (s *userService) UpdateUser(ctx context.Context, userID uuid.UUID, updateDa
 }
 
 func (s *userService) DeleteUser(ctx context.Context, userID uuid.UUID) error {
+	// Let repository handle not-found vs. internal errors; you may choose to wrap ErrInvalidID as needed.
 	if err := s.userRepo.Delete(ctx, userID); err != nil {
 		return fmt.Errorf("failed to delete user: %w", err)
 	}
@@ -155,11 +160,14 @@ func (s *userService) PromoteToAdmin(ctx context.Context, userID uuid.UUID) erro
 		return fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
-		return errors.New("user not found")
+		return ErrInvalidID
 	}
 
 	user.Role = "admin"
-	return s.userRepo.Update(ctx, user)
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return fmt.Errorf("failed to promote user: %w", err)
+	}
+	return nil
 }
 
 func (s *userService) GetAllUsers(ctx context.Context) ([]models.User, error) {

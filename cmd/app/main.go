@@ -116,7 +116,6 @@ func Run() {
 	// Protected routes
 	protected := router.Group("/api", middleware.AuthMiddleware())
 	{
-		protected.GET("/profile", handlers.ProfileHandler)
 		protected.GET("/profile/:id", userH.GetProfile)
 		protected.GET("/profile/users", userH.ListAllUsers)
 		protected.PUT("/profile/:id", userH.UpdateProfile)

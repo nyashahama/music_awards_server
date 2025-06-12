@@ -1,7 +1,7 @@
 package services
 
-import "errors"
+//import "errors"
 
 var (
-	ErrInvalidID = errors.New("invalid ID")
+// ErrInvalidID = errors.New("invalid ID")
 )

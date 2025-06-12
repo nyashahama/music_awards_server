@@ -1,12 +1,13 @@
+// handlers/user.go
 package handlers
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nyashahama/music-awards/internal/dtos"
 	"github.com/nyashahama/music-awards/internal/middleware"
 	"github.com/nyashahama/music-awards/internal/services"
 	"gorm.io/gorm"
@@ -21,32 +22,25 @@ func NewUserHandler(userService services.UserService) *UserHandler {
 }
 
 func (h *UserHandler) RegisterRoutes(r *gin.Engine) {
-	// Public auth endpoints
 	auth := r.Group("/auth")
-	auth.POST("/register", h.Register)
-	auth.POST("/login", h.Login)
+	{
+		auth.POST("/register", h.Register)
+		auth.POST("/login", h.Login)
+	}
 
-	// Protected user endpoints
 	users := r.Group("/users")
-	users.Use(middleware.AuthMiddleware()) // Ensure AuthMiddleware is applied
-	users.GET("", h.ListAllUsers)          // New route for listing users
-	users.GET("/:id", h.GetProfile)
-	users.PUT("/:id", h.UpdateProfile)
-	users.DELETE("/:id", h.DeleteAccount)
-}
-
-func ProfileHandler(c *gin.Context) {
-	uid := c.MustGet("user_id").(uuid.UUID)
-	c.JSON(http.StatusOK, gin.H{"user_id": uid})
+	users.Use(middleware.AuthMiddleware())
+	{
+		users.GET("", h.ListAllUsers)
+		users.GET("/:id", h.GetProfile)
+		users.PUT("/:id", h.UpdateProfile)
+		users.DELETE("/:id", h.DeleteAccount)
+		users.POST("/:id/promote", h.PromoteUser)
+	}
 }
 
 func (h *UserHandler) Register(c *gin.Context) {
-	var req struct {
-		Username string `json:"username" binding:"required"`
-		Email    string `json:"email" binding:"required,email"`
-		Password string `json:"password" binding:"required,min=6"`
-	}
-
+	var req dtos.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -58,15 +52,11 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, user)
+	c.JSON(http.StatusCreated, dtos.NewUserResponse(user))
 }
 
 func (h *UserHandler) Login(c *gin.Context) {
-	var req struct {
-		Email    string `json:"email" binding:"required,email"`
-		Password string `json:"password" binding:"required"`
-	}
-
+	var req dtos.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -78,13 +68,12 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	c.JSON(http.StatusOK, dtos.LoginResponse{Token: token})
 }
 
 func (h *UserHandler) ListAllUsers(c *gin.Context) {
-	// Check if current user is admin
-	currentUserRole, exists := c.Get("user_role")
-	if !exists || currentUserRole != "admin" {
+	currentUserRole := c.MustGet("user_role").(string)
+	if currentUserRole != "admin" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 		return
 	}
@@ -95,7 +84,11 @@ func (h *UserHandler) ListAllUsers(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, users)
+	response := make([]dtos.UserResponse, len(users))
+	for i, user := range users {
+		response[i] = dtos.NewUserResponse(&user)
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *UserHandler) GetProfile(c *gin.Context) {
@@ -111,7 +104,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, user)
+	c.JSON(http.StatusOK, dtos.NewUserResponse(user))
 }
 
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
@@ -121,18 +114,21 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	var updateData map[string]interface{}
-	if err := c.ShouldBindJSON(&updateData); err != nil {
+	var req dtos.UpdateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	allowedFields := map[string]bool{"username": true, "email": true, "password": true}
-	for key := range updateData {
-		if !allowedFields[key] {
-			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid field: %s", key)})
-			return
-		}
+	updateData := make(map[string]interface{})
+	if req.Username != nil {
+		updateData["username"] = *req.Username
+	}
+	if req.Email != nil {
+		updateData["email"] = *req.Email
+	}
+	if req.Password != nil {
+		updateData["password"] = *req.Password
 	}
 
 	user, err := h.userService.UpdateUser(c.Request.Context(), userID, updateData)
@@ -141,7 +137,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, user)
+	c.JSON(http.StatusOK, dtos.NewUserResponse(user))
 }
 
 func (h *UserHandler) DeleteAccount(c *gin.Context) {
@@ -151,21 +147,10 @@ func (h *UserHandler) DeleteAccount(c *gin.Context) {
 		return
 	}
 
-	// Get current user's claims from context
-	currentUserID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
+	currentUserID := c.MustGet("user_id").(uuid.UUID)
+	currentUserRole := c.MustGet("user_role").(string)
 
-	currentUserRole, exists := c.Get("user_role")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	// Authorization check
-	if currentUserRole.(string) != "admin" && currentUserID.(uuid.UUID) != userID {
+	if currentUserRole != "admin" && currentUserID != userID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 		return
 	}
@@ -185,6 +170,12 @@ func (h *UserHandler) PromoteUser(c *gin.Context) {
 		return
 	}
 
+	currentUserRole := c.MustGet("user_role").(string)
+	if currentUserRole != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
+
 	if err := h.userService.PromoteToAdmin(c.Request.Context(), userID); err != nil {
 		handleServiceError(c, err)
 		return
@@ -194,14 +185,13 @@ func (h *UserHandler) PromoteUser(c *gin.Context) {
 }
 
 func handleServiceError(c *gin.Context, err error) {
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	switch {
+	case errors.Is(err, gorm.ErrRecordNotFound):
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
-		return
-	}
-
-	switch err.Error() {
-	case "email already exists", "email already in use":
+	case errors.Is(err, services.ErrEmailExists):
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+	case errors.Is(err, services.ErrInvalidCredentials):
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 	}
