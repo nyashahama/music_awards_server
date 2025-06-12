@@ -64,11 +64,16 @@ func (r *nomineeCategoryRepository) SetCategories(ctx context.Context, nomineeId
 			return err
 		}
 
-		// Add new associations
-		for _, id := range categoryIds {
+		// Only add new categories if there are any
+		if len(categoryIds) > 0 {
+			categories := make([]models.Category, len(categoryIds))
+			for i, id := range categoryIds {
+				categories[i] = models.Category{CategoryID: id}
+			}
+
+			// Use Replace instead of multiple Appends
 			if err := tx.Model(&models.Nominee{NomineeID: nomineeId}).
-				Association("Categories").
-				Append(&models.Category{CategoryID: id}); err != nil {
+				Association("Categories").Replace(categories); err != nil {
 				return err
 			}
 		}

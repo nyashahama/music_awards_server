@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/nyashahama/music-awards/internal/models"
@@ -31,17 +32,25 @@ func (r *nomineeRepository) Create(ctx context.Context, nominee *models.Nominee)
 
 func (r *nomineeRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Nominee, error) {
 	var nominee models.Nominee
-	err := r.db.WithContext(ctx).Preload("Categories", func(db *gorm.DB) *gorm.DB {
-		return db.WithContext(ctx).Select("category_id", "name")
-	}).First(&nominee, "nominee_id = ?", id).Error
+	err := r.db.WithContext(ctx).
+		Preload("Categories", func(db *gorm.DB) *gorm.DB {
+			return db.Select("category_id", "name")
+		}).
+		First(&nominee, "nominee_id = ?", id).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
 	return &nominee, err
 }
 
 func (r *nomineeRepository) GetAll(ctx context.Context) ([]models.Nominee, error) {
 	var nominees []models.Nominee
-	err := r.db.WithContext(ctx).Preload("Categories", func(db *gorm.DB) *gorm.DB {
-		return db.Select("category_id", "name")
-	}).Find(&nominees).Error
+	err := r.db.WithContext(ctx).
+		Preload("Categories", func(db *gorm.DB) *gorm.DB {
+			return db.Select("category_id", "name")
+		}).
+		Find(&nominees).Error
 	return nominees, err
 }
 

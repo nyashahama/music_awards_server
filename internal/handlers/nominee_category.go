@@ -1,3 +1,4 @@
+// handlers/nominee_category.go
 package handlers
 
 import (
@@ -6,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nyashahama/music-awards/internal/dtos"
 	"github.com/nyashahama/music-awards/internal/middleware"
 	"github.com/nyashahama/music-awards/internal/services"
 	"gorm.io/gorm"
@@ -21,7 +23,7 @@ func NewNomineeCategoryHandler(service services.NomineeCategoryService) *Nominee
 
 func (h *NomineeCategoryHandler) RegisterRoutes(r *gin.Engine) {
 	nomineeCategoryGroup := r.Group("/nominees/:nominee_id/categories")
-	nomineeCategoryGroup.Use(middleware.AuthMiddleware())
+	nomineeCategoryGroup.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
 	{
 		nomineeCategoryGroup.POST("", h.AddCategory)
 		nomineeCategoryGroup.DELETE("/:category_id", h.RemoveCategory)
@@ -85,9 +87,7 @@ func (h *NomineeCategoryHandler) SetCategories(c *gin.Context) {
 		return
 	}
 
-	var req struct {
-		CategoryIDs []uuid.UUID `json:"category_id" binding:"required"`
-	}
+	var req dtos.SetCategoriesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -98,7 +98,7 @@ func (h *NomineeCategoryHandler) SetCategories(c *gin.Context) {
 		return
 	}
 
-	c.Status(http.StatusOK)
+	c.Status(http.StatusNoContent)
 }
 
 func (h *NomineeCategoryHandler) GetCategories(c *gin.Context) {
@@ -114,7 +114,15 @@ func (h *NomineeCategoryHandler) GetCategories(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, categories)
+	response := make([]dtos.CategoryBrief, len(categories))
+	for i, category := range categories {
+		response[i] = dtos.CategoryBrief{
+			CategoryID: category.CategoryID,
+			Name:       category.Name,
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *NomineeCategoryHandler) GetNominees(c *gin.Context) {
@@ -130,7 +138,12 @@ func (h *NomineeCategoryHandler) GetNominees(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, nominees)
+	response := make([]dtos.NomineeBrief, len(nominees))
+	for i, nominee := range nominees {
+		response[i] = dtos.NewNomineeBrief(&nominee)
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func handleNomineeCategoryError(c *gin.Context, err error) {

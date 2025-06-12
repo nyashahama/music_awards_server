@@ -12,9 +12,10 @@ type Nominee struct {
 	NomineeID   uuid.UUID `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()"`
 	Name        string    `gorm:"not null"`
 	Description string
-	/* 	SampleWorks datatypes.JSON `gorm:"type:jsonb"` */
 	SampleWorks json.RawMessage `gorm:"type:jsonb"`
 	ImageURL    string
 	CreatedAt   time.Time `gorm:"autoCreateTime"`
 	UpdatedAt   time.Time `gorm:"autoUpdateTime"`
+
+	Categories []Category `gorm:"many2many:nominee_categories;"`
 }

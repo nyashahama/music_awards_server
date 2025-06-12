@@ -12,9 +12,7 @@ type NomineeCategory struct {
 	CreatedAt  time.Time `gorm:"autoCreateTime"`
 	UpdatedAt  time.Time `gorm:"autoUpdateTime"`
 
-	// Associations
-	Nominee  Nominee  `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	Category Category `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	// Nominee    Nominee   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	// Category   Category  `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	// Corrected associations
+	Nominee  Nominee  `gorm:"foreignKey:NomineeID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Category Category `gorm:"foreignKey:CategoryID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }

@@ -75,10 +75,13 @@ func Run() {
 
 	//Initialize nominee dependencies
 	nomineeRepo := repositories.NewNomineeRepository(gormDB)
-	nomineeSvc := services.NewNomineeService(nomineeRepo)
-	nomineeH := handlers.NewNomineeHandler(nomineeSvc)
-
-	//Initialize nominee
+	nomineeCategoryRepo := repositories.NewNomineeCategoryRepository(gormDB)
+	nomineeSvc := services.NewNomineeService(
+		nomineeRepo,
+		categoryRepo,
+		nomineeCategoryRepo,
+	)
+	nomineeH := handlers.NewNomineeHandler(nomineeSvc) //Initialize nominee
 
 	// 6) Configure Gin router with production settings
 	router := gin.New()

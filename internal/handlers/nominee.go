@@ -1,15 +1,16 @@
+// handlers/nominee.go
 package handlers
 
 import (
-	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nyashahama/music-awards/internal/dtos"
 	"github.com/nyashahama/music-awards/internal/middleware"
-	"github.com/nyashahama/music-awards/internal/models"
 	"github.com/nyashahama/music-awards/internal/services"
-	// "gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 type NomineeHandler struct {
@@ -20,55 +21,38 @@ func NewNomineeHandler(nomineeService services.NomineeService) *NomineeHandler {
 	return &NomineeHandler{nomineeService: nomineeService}
 }
 
-//will create a DTO later
-
-type createNomineeRequest struct {
-	Name        string          `json:"name" binding:"required"`
-	Description string          `json:"description"`
-	SampleWorks json.RawMessage `json:"sample_works"`
-	ImageURL    string          `json:"image_url"`
-}
-
 func (h *NomineeHandler) RegisterRoutes(r *gin.Engine) {
-	//publiv endpoints for nominee
-	nominees := r.Group("/nominees")
-	nominees.GET("", h.GetAllNominees)
-	nominees.GET("/:id", h.GetNomineeDetails)
-
-	//admin/protected
-	adminNominees := r.Group("/nominees")
-	adminNominees.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
+	public := r.Group("/nominees")
 	{
-		adminNominees.POST("", h.CreateNominee)
-		adminNominees.PUT("/:id", h.UpdateNominee)
-		adminNominees.DELETE("/:id", h.DeleteNominee)
+		public.GET("", h.GetAllNominees)
+		public.GET("/:id", h.GetNomineeDetails)
+	}
+
+	admin := r.Group("/nominees")
+	admin.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
+	{
+		admin.POST("", h.CreateNominee)
+		admin.PUT("/:id", h.UpdateNominee)
+		admin.DELETE("/:id", h.DeleteNominee)
 	}
 }
 
 func (h *NomineeHandler) CreateNominee(c *gin.Context) {
-	var req createNomineeRequest
-
+	var req dtos.CreateNomineeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	nominee := models.Nominee{
-		Name:        req.Name,
-		Description: req.Description,
-		SampleWorks: req.SampleWorks,
-		ImageURL:    req.ImageURL,
-	}
-
-	result, err := h.nomineeService.CreateNominee(c.Request.Context(), nominee)
+	nominee, err := h.nomineeService.CreateNominee(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		handleNomineeError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, result)
-
+	c.JSON(http.StatusCreated, dtos.NewNomineeResponse(nominee))
 }
+
 func (h *NomineeHandler) UpdateNominee(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -76,19 +60,19 @@ func (h *NomineeHandler) UpdateNominee(c *gin.Context) {
 		return
 	}
 
-	var updateData map[string]interface{}
-	if err := c.ShouldBindJSON(&updateData); err != nil {
+	var req dtos.UpdateNomineeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	nominee, err := h.nomineeService.UpdateNominee(c.Request.Context(), id, updateData)
+	nominee, err := h.nomineeService.UpdateNominee(c.Request.Context(), id, req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleNomineeError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, nominee)
+	c.JSON(http.StatusOK, dtos.NewNomineeResponse(nominee))
 }
 
 func (h *NomineeHandler) DeleteNominee(c *gin.Context) {
@@ -99,9 +83,10 @@ func (h *NomineeHandler) DeleteNominee(c *gin.Context) {
 	}
 
 	if err := h.nomineeService.DeleteNominee(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleNomineeError(c, err)
 		return
 	}
+
 	c.Status(http.StatusNoContent)
 }
 
@@ -114,22 +99,38 @@ func (h *NomineeHandler) GetNomineeDetails(c *gin.Context) {
 
 	nominee, err := h.nomineeService.GetNomineeDetails(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleNomineeError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, nominee)
+	c.JSON(http.StatusOK, dtos.NewNomineeResponse(nominee))
 }
 
 func (h *NomineeHandler) GetAllNominees(c *gin.Context) {
 	nominees, err := h.nomineeService.GetAllNominees(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleNomineeError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, nominees)
+
+	response := make([]dtos.NomineeResponse, len(nominees))
+	for i, nominee := range nominees {
+		response[i] = dtos.NewNomineeResponse(&nominee)
+	}
+	c.JSON(http.StatusOK, response)
 }
 
-func (h *NomineeHandler) SetNominationPeriod(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "not implemented"})
+func handleNomineeError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, services.ErrNomineeNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	case errors.Is(err, services.ErrInvalidJSON):
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON format"})
+	case errors.Is(err, services.ErrCategoryNotFound):
+		c.JSON(http.StatusBadRequest, gin.H{"error": "one or more categories not found"})
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": "record not found"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+	}
 }

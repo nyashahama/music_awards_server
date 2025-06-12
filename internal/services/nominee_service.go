@@ -1,3 +1,4 @@
+// services/nominee_service.go
 package services
 
 import (
@@ -5,76 +6,140 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	//"time"
 
 	"github.com/google/uuid"
+	"github.com/nyashahama/music-awards/internal/dtos"
 	"github.com/nyashahama/music-awards/internal/models"
 	"github.com/nyashahama/music-awards/internal/repositories"
-	// "gorm.io/datatypes"
 )
 
-// NomineeService handles nominee-related operations
+var (
+	ErrNomineeNotFound = errors.New("nominee not found")
+	ErrInvalidJSON     = errors.New("invalid JSON data")
+
+/* 	ErrCategoryNotFound = errors.New("category not found") */
+)
+
 type NomineeService interface {
-	CreateNominee(ctx context.Context, nominee models.Nominee) (*models.Nominee, error)
-	UpdateNominee(ctx context.Context, nomineeID uuid.UUID, updateData map[string]interface{}) (*models.Nominee, error)
+	CreateNominee(ctx context.Context, req dtos.CreateNomineeRequest) (*models.Nominee, error)
+	UpdateNominee(ctx context.Context, nomineeID uuid.UUID, req dtos.UpdateNomineeRequest) (*models.Nominee, error)
 	DeleteNominee(ctx context.Context, nomineeID uuid.UUID) error
 	GetNomineeDetails(ctx context.Context, nomineeID uuid.UUID) (*models.Nominee, error)
 	GetAllNominees(ctx context.Context) ([]models.Nominee, error)
 }
 
 type nomineeService struct {
-	// Dependencies
-	repo repositories.NomineeRepository
+	repo                repositories.NomineeRepository
+	categoryRepo        repositories.CategoryRepository
+	nomineeCategoryRepo repositories.NomineeCategoryRepository
 }
 
-func NewNomineeService(repo repositories.NomineeRepository) NomineeService {
-	return &nomineeService{repo: repo}
-
+func NewNomineeService(
+	repo repositories.NomineeRepository,
+	categoryRepo repositories.CategoryRepository,
+	nomineeCategoryRepo repositories.NomineeCategoryRepository,
+) NomineeService {
+	return &nomineeService{
+		repo:                repo,
+		categoryRepo:        categoryRepo,
+		nomineeCategoryRepo: nomineeCategoryRepo,
+	}
 }
 
-func (s *nomineeService) CreateNominee(ctx context.Context, nominee models.Nominee) (*models.Nominee, error) {
-	if err := s.repo.Create(ctx, &nominee); err != nil {
+func (s *nomineeService) CreateNominee(ctx context.Context, req dtos.CreateNomineeRequest) (*models.Nominee, error) {
+	// Validate sample works JSON
+	if req.SampleWorks != nil && !json.Valid(req.SampleWorks) {
+		return nil, ErrInvalidJSON
+	}
+
+	// Validate categories exist
+	for _, categoryID := range req.CategoryIDs {
+		category, err := s.categoryRepo.GetByID(ctx, categoryID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate category: %w", err)
+		}
+		if category == nil {
+			return nil, ErrCategoryNotFound
+		}
+	}
+
+	nominee := &models.Nominee{
+		NomineeID:   uuid.New(),
+		Name:        req.Name,
+		Description: req.Description,
+		SampleWorks: req.SampleWorks,
+		ImageURL:    req.ImageURL,
+	}
+
+	// Create nominee
+	if err := s.repo.Create(ctx, nominee); err != nil {
 		return nil, fmt.Errorf("failed to create nominee: %w", err)
 	}
+
+	// Set categories if provided
+	if len(req.CategoryIDs) > 0 {
+		if err := s.nomineeCategoryRepo.SetCategories(ctx, nominee.NomineeID, req.CategoryIDs); err != nil {
+			return nil, fmt.Errorf("failed to set categories: %w", err)
+		}
+	}
+
+	// Reload nominee to get associations
 	return s.repo.GetByID(ctx, nominee.NomineeID)
 }
 
-func (s *nomineeService) UpdateNominee(ctx context.Context, nomineeID uuid.UUID, updateData map[string]interface{}) (*models.Nominee, error) {
+func (s *nomineeService) UpdateNominee(ctx context.Context, nomineeID uuid.UUID, req dtos.UpdateNomineeRequest) (*models.Nominee, error) {
 	nominee, err := s.repo.GetByID(ctx, nomineeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get nominee: %w", err)
 	}
 	if nominee == nil {
-		return nil, errors.New("nominee not found")
+		return nil, ErrNomineeNotFound
 	}
 
-	if name, ok := updateData["name"].(string); ok {
-		nominee.Name = name
+	// Update fields
+	if req.Name != nil {
+		nominee.Name = *req.Name
 	}
-	if desc, ok := updateData["description"].(string); ok {
-		nominee.Description = desc
+	if req.Description != nil {
+		nominee.Description = *req.Description
 	}
-	if img, ok := updateData["image_url"].(string); ok {
-		nominee.ImageURL = img
+	if req.ImageURL != nil {
+		nominee.ImageURL = *req.ImageURL
 	}
-
-	if works, ok := updateData["sample_works"]; ok {
-		raw, err := json.Marshal(works)
-		if err != nil {
-			return nil, fmt.Errorf("could not marshal sample_works: %w", err)
+	if req.SampleWorks != nil {
+		if !json.Valid(*req.SampleWorks) {
+			return nil, ErrInvalidJSON
 		}
-		nominee.SampleWorks = json.RawMessage(raw)
+		nominee.SampleWorks = *req.SampleWorks
 	}
 
+	// Update categories if provided
+	// Validate new categories if provided
+	if req.CategoryIDs != nil {
+		for _, categoryID := range *req.CategoryIDs {
+			category, err := s.categoryRepo.GetByID(ctx, categoryID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to validate category: %w", err)
+			}
+			if category == nil {
+				return nil, ErrCategoryNotFound
+			}
+		}
+	}
+	// Save nominee
 	if err := s.repo.Update(ctx, nominee); err != nil {
 		return nil, fmt.Errorf("failed to update nominee: %w", err)
 	}
 
-	return nominee, nil
+	// Reload to get updated associations
+	return s.repo.GetByID(ctx, nomineeID)
 }
 
 func (s *nomineeService) DeleteNominee(ctx context.Context, nomineeID uuid.UUID) error {
-	return s.repo.Delete(ctx, nomineeID)
+	if err := s.repo.Delete(ctx, nomineeID); err != nil {
+		return fmt.Errorf("failed to delete nominee: %w", err)
+	}
+	return nil
 }
 
 func (s *nomineeService) GetNomineeDetails(ctx context.Context, nomineeID uuid.UUID) (*models.Nominee, error) {
@@ -83,7 +148,7 @@ func (s *nomineeService) GetNomineeDetails(ctx context.Context, nomineeID uuid.U
 		return nil, fmt.Errorf("failed to get nominee: %w", err)
 	}
 	if nominee == nil {
-		return nil, errors.New("nominee not found")
+		return nil, ErrNomineeNotFound
 	}
 	return nominee, nil
 }
