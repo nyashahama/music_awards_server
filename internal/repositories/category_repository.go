@@ -43,6 +43,9 @@ func (r *categoryRepository) GetByID(ctx context.Context, id uuid.UUID) (*models
 func (r *categoryRepository) GetByName(ctx context.Context, name string) (*models.Category, error) {
 	var category models.Category
 	err := r.db.WithContext(ctx).First(&category, "name = ?", name).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
 	return &category, err
 }
 

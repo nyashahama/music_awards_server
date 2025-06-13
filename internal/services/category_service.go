@@ -35,6 +35,7 @@ func NewCategoryService(repo repositories.CategoryRepository) CategoryService {
 
 func (s *categoryService) CreateCategory(ctx context.Context, name, description string) (*models.Category, error) {
 	// Check for existing category
+
 	existing, err := s.repo.GetByName(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check category name: %w", err)
