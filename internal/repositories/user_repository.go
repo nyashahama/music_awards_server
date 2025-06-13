@@ -44,7 +44,7 @@ func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Use
 func (r *userRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 	err := r.db.WithContext(ctx).
-		Select("user_id", "password_hash", "role", "email", "username", "available_votes").
+		Select("role", "email", "username", "available_votes").
 		Where("email = ?", email).
 		Take(&user).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -56,7 +56,7 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*models.
 func (r *userRepository) GetAll(ctx context.Context) ([]models.User, error) {
 	var users []models.User
 	// Exclude sensitive fields
-	err := r.db.WithContext(ctx).Select("user_id", "username", "email", "role", "available_votes", "created_at").Find(&users).Error
+	err := r.db.WithContext(ctx).Select("user_id", "username", "available_votes", "created_at").Find(&users).Error
 	return users, err
 }
 func (r *userRepository) Update(ctx context.Context, user *models.User) error {
