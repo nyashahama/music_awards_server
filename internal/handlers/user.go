@@ -65,6 +65,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	token, err := h.userService.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		handleServiceError(c, err)
 		return
 	}
 

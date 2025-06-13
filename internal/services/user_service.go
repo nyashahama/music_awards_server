@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/nyashahama/music-awards/internal/models"
@@ -40,6 +41,9 @@ func NewUserService(userRepo repositories.UserRepository) UserService {
 }
 
 func (s *userService) Register(ctx context.Context, username, email, password string) (*models.User, error) {
+
+	email = strings.ToLower(email)
+
 	if !validation.ValidateEmail(email) {
 		return nil, fmt.Errorf("invalid email format")
 	}
@@ -77,6 +81,9 @@ func (s *userService) Register(ctx context.Context, username, email, password st
 }
 
 func (s *userService) Login(ctx context.Context, email, password string) (string, error) {
+
+	email = strings.ToLower(email)
+
 	user, err := s.userRepo.GetByEmail(ctx, email)
 	if err != nil {
 		return "", fmt.Errorf("failed to get user: %w", err)
@@ -122,6 +129,7 @@ func (s *userService) UpdateUser(ctx context.Context, userID uuid.UUID, updateDa
 
 	if email, ok := updateData["email"].(string); ok {
 		// Add validation
+		email = strings.ToLower(email)
 		if !validation.ValidateEmail(email) {
 			return nil, fmt.Errorf("invalid email format")
 		}
