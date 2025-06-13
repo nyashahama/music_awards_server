@@ -68,12 +68,12 @@ func Run() {
 	userSvc := services.NewUserService(userRepo)
 	userH := handlers.NewUserHandler(userSvc)
 
-	//Initialize category dependencies
+	// Initialize category dependencies
 	categoryRepo := repositories.NewCategoryRepository(gormDB)
 	categorySvc := services.NewCategoryService(categoryRepo)
 	categoryH := handlers.NewCategoryHandler(categorySvc)
 
-	//Initialize nominee dependencies
+	// Initialize nominee dependencies
 	nomineeRepo := repositories.NewNomineeRepository(gormDB)
 	nomineeCategoryRepo := repositories.NewNomineeCategoryRepository(gormDB)
 	nomineeSvc := services.NewNomineeService(
@@ -81,7 +81,16 @@ func Run() {
 		categoryRepo,
 		nomineeCategoryRepo,
 	)
-	nomineeH := handlers.NewNomineeHandler(nomineeSvc) //Initialize nominee
+	nomineeH := handlers.NewNomineeHandler(nomineeSvc)
+
+	// Initialize nominee-category dependencies
+	nomineeCategorySvc := services.NewNomineeCategoryService(nomineeCategoryRepo)
+	nomineeCategoryH := handlers.NewNomineeCategoryHandler(nomineeCategorySvc)
+
+	// Initialize vote dependencies
+	voteRepo := repositories.NewVoteRepository(gormDB)
+	voteSvc := services.NewVotingMechanismService(voteRepo, userRepo)
+	voteH := handlers.NewVoteHandler(voteSvc)
 
 	// 6) Configure Gin router with production settings
 	router := gin.New()
@@ -103,51 +112,63 @@ func Run() {
 	// API routes
 	api := router.Group("/api")
 	{
+		// Authentication
 		api.POST("/register", userH.Register)
 		api.POST("/login", userH.Login)
 
-		//Public Category APIs
+		// Public Category APIs
 		api.GET("/categories", categoryH.ListCategories)
 		api.GET("/categories/active", categoryH.ListActiveCategories)
 		api.GET("/categories/:categoryId", categoryH.GetCategory)
 
-		//Public Nominee APIs
+		// Public Nominee APIs
 		api.GET("/nominees", nomineeH.GetAllNominees)
 		api.GET("/nominees/:id", nomineeH.GetNomineeDetails)
 	}
 
-	// Protected routes
+	// Protected routes (require authentication)
 	protected := router.Group("/api", middleware.AuthMiddleware())
 	{
+		// User routes
 		protected.GET("/profile/:id", userH.GetProfile)
 		protected.GET("/profile/users", userH.ListAllUsers)
 		protected.PUT("/profile/:id", userH.UpdateProfile)
 		protected.DELETE("/profile/:id", userH.DeleteAccount)
 		protected.PUT("/profile/:id/promote", userH.PromoteUser)
 
-		//Protected Category APIs
-		adminCategories := protected.Group("/categories", middleware.AdminMiddleware())
-		{
-			adminCategories.POST("", categoryH.CreateCategory)
-			adminCategories.PUT("/:categoryId", categoryH.UpdateCategory)
-			adminCategories.DELETE("/:categoryId", categoryH.DeleteCategory)
-		}
+		// Vote routes
+		protected.POST("/votes", voteH.CastVote)
+		protected.GET("/votes", voteH.GetUserVotes)
+		protected.GET("/votes/available", voteH.GetAvailableVotes)
+		protected.PUT("/votes/:id", voteH.ChangeVote)
+		protected.DELETE("/votes/:id", voteH.DeleteVote)
 
-		adminNominees := protected.Group("/nominees", middleware.AdminMiddleware())
-		{
-			adminNominees.POST("", nomineeH.CreateNominee)
-			adminNominees.PUT("/:id", nomineeH.UpdateNominee)
-			adminNominees.DELETE("/:id", nomineeH.DeleteNominee)
-		}
+		// Nominee-Category routes
+		protected.GET("/categories/:categoryId/nominees", nomineeCategoryH.GetNominees)
+	}
 
-		/*	nomineeCategories := protected.Group("/nominees/:nominee_id/categories")
-			{
-				nomineeCategories.POST("", nomineeCategoryH.AddCategory)
-				//nomineeCategories.DELETE("/:category_id", nomineeCategoryH.RemoveCategory)
-				nomineeCategories.PUT("", nomineeCategoryH.SetCategories)
-				nomineeCategories.GET("", nomineeCategoryH.GetCategories)
-			}
-		*/
+	// Admin-only routes
+	admin := router.Group("/api", middleware.AuthMiddleware(), middleware.AdminMiddleware())
+	{
+		// Category Admin APIs
+		admin.POST("/categories", categoryH.CreateCategory)
+		admin.PUT("/categories/:categoryId", categoryH.UpdateCategory)
+		admin.DELETE("/categories/:categoryId", categoryH.DeleteCategory)
+
+		// Nominee Admin APIs
+		admin.POST("/nominees", nomineeH.CreateNominee)
+		admin.PUT("/nominees/:id", nomineeH.UpdateNominee)
+		admin.DELETE("/nominees/:id", nomineeH.DeleteNominee)
+
+		// Nominee-Category Admin APIs
+		admin.POST("/nominees/:id/categories", nomineeCategoryH.AddCategory)
+		admin.DELETE("/nominees/:id/categories/:categoryId", nomineeCategoryH.RemoveCategory)
+		admin.PUT("/nominees/:id/categories", nomineeCategoryH.SetCategories)
+		admin.GET("/nominees/:id/categories", nomineeCategoryH.GetCategories)
+
+		// Vote Admin APIs
+		admin.GET("/votes/category/:category_id", voteH.GetCategoryVotes)
+		admin.GET("/votes/all", voteH.GetAllVotes)
 	}
 
 	// 7) Configure server with proper timeouts

@@ -1,4 +1,3 @@
-// handlers/nominee_category.go
 package handlers
 
 import (
@@ -22,16 +21,16 @@ func NewNomineeCategoryHandler(service services.NomineeCategoryService) *Nominee
 }
 
 func (h *NomineeCategoryHandler) RegisterRoutes(r *gin.Engine) {
-	nomineeCategoryGroup := r.Group("/nominees/:nominee_id/categories")
+	nomineeCategoryGroup := r.Group("/nominees/:id/categories")
 	nomineeCategoryGroup.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
 	{
 		nomineeCategoryGroup.POST("", h.AddCategory)
-		nomineeCategoryGroup.DELETE("/:category_id", h.RemoveCategory)
+		nomineeCategoryGroup.DELETE("/:categoryId", h.RemoveCategory)
 		nomineeCategoryGroup.PUT("", h.SetCategories)
 		nomineeCategoryGroup.GET("", h.GetCategories)
 	}
 
-	categoryGroup := r.Group("/categories/:category_id/nominees")
+	categoryGroup := r.Group("/categories/:categoryId/nominees")
 	categoryGroup.Use(middleware.AuthMiddleware())
 	{
 		categoryGroup.GET("", h.GetNominees)
@@ -39,19 +38,21 @@ func (h *NomineeCategoryHandler) RegisterRoutes(r *gin.Engine) {
 }
 
 func (h *NomineeCategoryHandler) AddCategory(c *gin.Context) {
-	nomineeID, err := uuid.Parse(c.Param("nominee_id"))
+	nomineeID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid nominee ID"})
 		return
 	}
 
-	categoryID, err := uuid.Parse(c.Param("category_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid category ID"})
+	var req struct {
+		CategoryID uuid.UUID `json:"categoryId"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := h.service.AddCategory(c.Request.Context(), nomineeID, categoryID); err != nil {
+	if err := h.service.AddCategory(c.Request.Context(), nomineeID, req.CategoryID); err != nil {
 		handleNomineeCategoryError(c, err)
 		return
 	}
@@ -60,13 +61,13 @@ func (h *NomineeCategoryHandler) AddCategory(c *gin.Context) {
 }
 
 func (h *NomineeCategoryHandler) RemoveCategory(c *gin.Context) {
-	nomineeID, err := uuid.Parse(c.Param("nominee_id"))
+	nomineeID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid nominee ID"})
 		return
 	}
 
-	categoryID, err := uuid.Parse(c.Param("category_id"))
+	categoryID, err := uuid.Parse(c.Param("categoryId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid category ID"})
 		return
@@ -81,7 +82,7 @@ func (h *NomineeCategoryHandler) RemoveCategory(c *gin.Context) {
 }
 
 func (h *NomineeCategoryHandler) SetCategories(c *gin.Context) {
-	nomineeID, err := uuid.Parse(c.Param("nominee_id"))
+	nomineeID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid nominee ID"})
 		return
@@ -102,7 +103,7 @@ func (h *NomineeCategoryHandler) SetCategories(c *gin.Context) {
 }
 
 func (h *NomineeCategoryHandler) GetCategories(c *gin.Context) {
-	nomineeID, err := uuid.Parse(c.Param("nominee_id"))
+	nomineeID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid nominee ID"})
 		return
@@ -126,7 +127,7 @@ func (h *NomineeCategoryHandler) GetCategories(c *gin.Context) {
 }
 
 func (h *NomineeCategoryHandler) GetNominees(c *gin.Context) {
-	categoryID, err := uuid.Parse(c.Param("category_id"))
+	categoryID, err := uuid.Parse(c.Param("categoryId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid category ID"})
 		return
