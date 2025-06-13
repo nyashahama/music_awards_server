@@ -2,11 +2,18 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/nyashahama/music-awards/internal/models"
 	"github.com/nyashahama/music-awards/internal/repositories"
+)
+
+var (
+	ErrNoVotesAvailable       = errors.New("no votes available")
+	ErrAlreadyVotedInCategory = errors.New("already voted in category")
+	ErrVotingPeriodClosed     = errors.New("voting period is closed")
 )
 
 type VotingMechanismService interface {
@@ -19,6 +26,7 @@ type VotingMechanismService interface {
 	ValidateVotingPeriod(ctx context.Context, categoryID uuid.UUID) (bool, error)
 	DeleteVote(ctx context.Context, voteID uuid.UUID) error
 	GetAvailableVotes(ctx context.Context, userID uuid.UUID) (int, error)
+	GetAllVotes(ctx context.Context) ([]models.Vote, error)
 }
 
 type votingMechanismService struct {
@@ -35,6 +43,24 @@ func NewVotingMechanismService(voteRepo repositories.VoteRepository, userRepo re
 
 func (s *votingMechanismService) CastVote(ctx context.Context, userID, nomineeID, categoryID uuid.UUID) (*models.Vote, error) {
 	// Check available votes
+
+	hasVoted, err := s.HasVotedInCategory(ctx, userID, categoryID)
+	if err != nil {
+		return nil, fmt.Errorf("error checking existing vote: %w", err)
+	}
+	if hasVoted {
+		return nil, ErrAlreadyVotedInCategory
+	}
+
+	// Validate voting period
+	isOpen, err := s.ValidateVotingPeriod(ctx, categoryID)
+	if err != nil {
+		return nil, fmt.Errorf("error validating voting period: %w", err)
+	}
+	if !isOpen {
+		return nil, ErrVotingPeriodClosed
+	}
+
 	if err := s.userRepo.DecrementAvailableVotes(ctx, userID); err != nil {
 		return nil, fmt.Errorf("insufficient votes: %w", err)
 	}
@@ -136,3 +162,6 @@ func (s *votingMechanismService) GetAvailableVotes(ctx context.Context, userID u
 	return user.AvailableVotes, nil
 }
 
+func (s *votingMechanismService) GetAllVotes(ctx context.Context) ([]models.Vote, error) {
+	return s.voteRepo.GetAll(ctx)
+}
