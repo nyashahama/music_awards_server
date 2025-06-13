@@ -44,7 +44,7 @@ func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Use
 func (r *userRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 	err := r.db.WithContext(ctx).
-		Select("user_id", "password_hash", "role", "email", "username").
+		Select("user_id", "password_hash", "role", "email", "username", "available_votes").
 		Where("email = ?", email).
 		Take(&user).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -56,7 +56,7 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*models.
 func (r *userRepository) GetAll(ctx context.Context) ([]models.User, error) {
 	var users []models.User
 	// Exclude sensitive fields
-	err := r.db.WithContext(ctx).Select("user_id", "username", "email", "role", "created_at").Find(&users).Error
+	err := r.db.WithContext(ctx).Select("user_id", "username", "email", "role", "available_votes", "created_at").Find(&users).Error
 	return users, err
 }
 func (r *userRepository) Update(ctx context.Context, user *models.User) error {
@@ -68,18 +68,19 @@ func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 func (r *userRepository) DecrementAvailableVotes(ctx context.Context, userID uuid.UUID) error {
-	result := r.db.WithContext(ctx).
-		Model(&models.User{}).
-		Where("user_id = ? AND available_votes > 0", userID).
-		Update("available_votes", gorm.Expr("available_votes - 1"))
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var user models.User
+		if err := tx.First(&user, "user_id = ?", userID).Error; err != nil {
+			return err
+		}
 
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return errors.New("no votes available")
-	}
-	return nil
+		if user.AvailableVotes <= 0 {
+			return errors.New("no votes available")
+		}
+
+		return tx.Model(&user).
+			Update("available_votes", gorm.Expr("available_votes - 1")).Error
+	})
 }
 
 func (r *userRepository) IncrementAvailableVotes(ctx context.Context, userID uuid.UUID) error {

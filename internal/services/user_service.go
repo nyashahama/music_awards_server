@@ -121,6 +121,10 @@ func (s *userService) UpdateUser(ctx context.Context, userID uuid.UUID, updateDa
 	}
 
 	if email, ok := updateData["email"].(string); ok {
+		// Add validation
+		if !validation.ValidateEmail(email) {
+			return nil, fmt.Errorf("invalid email format")
+		}
 		existing, err := s.userRepo.GetByEmail(ctx, email)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check email: %w", err)
@@ -132,6 +136,10 @@ func (s *userService) UpdateUser(ctx context.Context, userID uuid.UUID, updateDa
 	}
 
 	if password, ok := updateData["password"].(string); ok {
+		// Add validation
+		if err := validation.ValidatePassword(password); err != nil {
+			return nil, fmt.Errorf("%w: %s", ErrPasswordValidation, err)
+		}
 		hashedPassword, err := hashPassword(password)
 		if err != nil {
 			return nil, fmt.Errorf("failed to hash password: %w", err)

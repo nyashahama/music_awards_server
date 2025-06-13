@@ -35,7 +35,7 @@ type UserResponse struct {
 	Role           string    `json:"role"`
 	AvailableVotes int       `json:"available_votes"`
 	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	//UpdatedAt      time.Time `json:"updated_at"`
 }
 
 // LoginResponse is the response payload after a successful login.
@@ -52,6 +52,6 @@ func NewUserResponse(user *models.User) UserResponse {
 		Role:           user.Role,
 		AvailableVotes: user.AvailableVotes,
 		CreatedAt:      user.CreatedAt,
-		UpdatedAt:      user.UpdatedAt,
+		//UpdatedAt:      user.UpdatedAt,
 	}
 }

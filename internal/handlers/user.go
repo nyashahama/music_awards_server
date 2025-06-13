@@ -98,6 +98,15 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
+	currentUserID := c.MustGet("user_id").(uuid.UUID)
+	currentUserRole := c.MustGet("user_role").(string)
+
+	// Add authorization check
+	if currentUserRole != "admin" && currentUserID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
+
 	user, err := h.userService.GetUserProfile(c.Request.Context(), userID)
 	if err != nil {
 		handleServiceError(c, err)
@@ -192,6 +201,8 @@ func handleServiceError(c *gin.Context, err error) {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 	case errors.Is(err, services.ErrInvalidCredentials):
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+	case errors.Is(err, services.ErrPasswordValidation):
+		c.JSON(http.StatusBadRequest, gin.H{"error": "password validation failed"})
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 	}
