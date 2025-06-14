@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/google/uuid"
@@ -81,28 +82,35 @@ func (s *userService) Register(ctx context.Context, username, email, password st
 }
 
 func (s *userService) Login(ctx context.Context, email, password string) (string, error) {
-
 	email = strings.ToLower(email)
+	log.Printf("Login attempt for: %s", email)
 
 	user, err := s.userRepo.GetByEmail(ctx, email)
 	if err != nil {
+		log.Printf("Login error: %v", err)
 		return "", fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
+		log.Printf("User not found: %s", email)
 		return "", ErrInvalidCredentials
 	}
 
 	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) != nil {
+		log.Printf("Invalid password for: %s", email)
 		return "", ErrInvalidCredentials
 	}
 
+	log.Printf("Login successful for user: %s (%s)", user.Username, user.UserID)
+
 	token, err := security.GenerateJWT(user.UserID, user.Username, user.Role, user.Email)
 	if err != nil {
+		log.Printf("Token generation failed: %v", err)
 		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
+
+	log.Printf("Generated token: %s", token)
 	return token, nil
 }
-
 func (s *userService) GetUserProfile(ctx context.Context, userID uuid.UUID) (*models.User, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {

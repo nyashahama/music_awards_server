@@ -2,6 +2,7 @@ package security
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -10,18 +11,18 @@ import (
 )
 
 type JWTClaims struct {
-	UserID   uuid.UUID `json:"user_id"`
-	Username string    `json:"username"`
-	Role     string    `json:"role"`
-	Email    string    `json:"email"`
+	UserID   string `json:"user_id"`
+	Username string `json:"username"`
+	Role     string `json:"role"`
+	Email    string `json:"email"`
 	jwt.RegisteredClaims
 }
 
 var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
-func GenerateJWT(userID uuid.UUID, username string, role string, email string) (string, error) {
+func GenerateJWT(userID uuid.UUID, username, role, email string) (string, error) {
 	claims := JWTClaims{
-		UserID:   userID,
+		UserID:   userID.String(),
 		Username: username,
 		Role:     role,
 		Email:    email,
@@ -36,13 +37,20 @@ func GenerateJWT(userID uuid.UUID, username string, role string, email string) (
 
 func ValidateJWT(tokenStr string) (*JWTClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		// Validate algorithm
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
 		return jwtSecret, nil
 	})
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("token parse error: %w", err)
 	}
+
 	if claims, ok := token.Claims.(*JWTClaims); ok && token.Valid {
 		return claims, nil
 	}
+
 	return nil, errors.New("invalid token")
 }

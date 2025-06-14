@@ -44,9 +44,9 @@ func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Use
 func (r *userRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 	err := r.db.WithContext(ctx).
-		Select("role", "email", "username", "available_votes", "password_hash").
-		Where("email = ?", email).
-		Take(&user).Error
+		Where("email = ?", email). // Fixed: use WHERE instead of Select
+		First(&user).Error         // Use First to get a single record
+
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}

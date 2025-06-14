@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -41,6 +42,7 @@ func (h *VoteHandler) RegisterRoutes(r *gin.Engine) {
 
 func (h *VoteHandler) CastVote(c *gin.Context) {
 	userID := c.MustGet("user_id").(uuid.UUID)
+	fmt.Printf("Authenticated userId %s\n", userID)
 
 	var req dtos.CastVoteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

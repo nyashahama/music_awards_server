@@ -14,6 +14,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/joho/godotenv"
 	"github.com/nyashahama/music-awards/internal/config"
 	"github.com/nyashahama/music-awards/internal/handlers"
 	"github.com/nyashahama/music-awards/internal/middleware"
@@ -24,6 +25,9 @@ import (
 )
 
 func Run() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using system environment variables")
+	}
 	// 1) Load config
 	dbCfg, err := config.LoadDBConfig()
 	if err != nil {
