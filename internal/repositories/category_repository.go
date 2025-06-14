@@ -51,7 +51,12 @@ func (r *categoryRepository) GetByName(ctx context.Context, name string) (*model
 
 func (r *categoryRepository) GetAll(ctx context.Context) ([]models.Category, error) {
 	var categories []models.Category
-	err := r.db.WithContext(ctx).Preload("Nominees").Find(&categories).Error
+	err := r.db.WithContext(ctx).
+		Preload("Nominees", func(db *gorm.DB) *gorm.DB {
+			return db.Joins("JOIN nominee_categories ON nominees.nominee_id = nominee_categories.nominee_id").
+				Where("nominee_categories.category_id = categories.category_id")
+		}).
+		Find(&categories).Error
 	return categories, err
 }
 

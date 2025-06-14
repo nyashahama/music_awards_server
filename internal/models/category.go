@@ -13,5 +13,5 @@ type Category struct {
 	CreatedAt   time.Time `gorm:"autoCreateTime"`
 	UpdatedAt   time.Time `gorm:"autoUpdateTime"`
 	Votes       []Vote    `gorm:"foreignKey:CategoryID;constraint:OnDelete:CASCADE;"`
-	Nominees    []Nominee `gorm:"many2many:nominee_categories;"`
+	Nominees    []Nominee `gorm:"many2many:nominee_categories;joinForeignKey:CategoryID;joinReferences:NomineeID;"`
 }
