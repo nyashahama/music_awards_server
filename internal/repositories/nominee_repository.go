@@ -34,10 +34,10 @@ func (r *nomineeRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.
 	var nominee models.Nominee
 	err := r.db.WithContext(ctx).
 		Preload("Categories", func(db *gorm.DB) *gorm.DB {
-			return db.Select("category_id", "name")
+			return db.Joins("JOIN nominee_categories ON categories.category_id = nominee_categories.category_id").
+				Where("nominee_categories.nominee_id = ?", id)
 		}).
 		First(&nominee, "nominee_id = ?", id).Error
-
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
@@ -50,6 +50,8 @@ func (r *nomineeRepository) GetAll(ctx context.Context) ([]models.Nominee, error
 		Preload("Categories", func(db *gorm.DB) *gorm.DB {
 			return db.Select("category_id", "name")
 		}).
+		Joins("LEFT JOIN nominee_categories ON nominees.nominee_id = nominee_categories.nominee_id").
+		Group("nominees.nominee_id").
 		Find(&nominees).Error
 	return nominees, err
 }

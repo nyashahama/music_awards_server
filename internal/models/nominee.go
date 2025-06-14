@@ -17,5 +17,5 @@ type Nominee struct {
 	CreatedAt   time.Time `gorm:"autoCreateTime"`
 	UpdatedAt   time.Time `gorm:"autoUpdateTime"`
 
-	Categories []Category `gorm:"many2many:nominee_categories;"`
+	Categories []Category `gorm:"many2many:nominee_categories;joinForeignKey:NomineeID;joinReferences:CategoryID"`
 }
