@@ -122,7 +122,6 @@ func (h *NomineeCategoryHandler) GetCategories(c *gin.Context) {
 			Name:       category.Name,
 		}
 	}
-
 	c.JSON(http.StatusOK, response)
 }
 
@@ -139,14 +138,18 @@ func (h *NomineeCategoryHandler) GetNominees(c *gin.Context) {
 		return
 	}
 
+	// Convert to NomineeBrief DTO
 	response := make([]dtos.NomineeBrief, len(nominees))
 	for i, nominee := range nominees {
-		response[i] = dtos.NewNomineeBrief(&nominee)
+		response[i] = dtos.NomineeBrief{
+			NomineeID: nominee.NomineeID,
+			Name:      nominee.Name,
+			ImageURL:  nominee.ImageURL,
+		}
 	}
 
 	c.JSON(http.StatusOK, response)
 }
-
 func handleNomineeCategoryError(c *gin.Context, err error) {
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "record not found"})

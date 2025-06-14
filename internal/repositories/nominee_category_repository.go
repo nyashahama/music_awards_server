@@ -39,8 +39,8 @@ func (r *nomineeCategoryRepository) RemoveCategory(ctx context.Context, nomineeI
 func (r *nomineeCategoryRepository) GetCategoriesForNominee(ctx context.Context, nomineeId uuid.UUID) ([]models.Category, error) {
 	var categories []models.Category
 	err := r.db.WithContext(ctx).
-		Select("category_id", "name", "description").
-		Joins("JOIN nominee_categories ON nominee_categories.category_id = categories.category_id").
+		Select("categories.category_id", "categories.name").
+		Joins("JOIN nominee_categories ON categories.category_id = nominee_categories.category_id").
 		Where("nominee_categories.nominee_id = ?", nomineeId).
 		Find(&categories).Error
 	return categories, err
@@ -49,8 +49,8 @@ func (r *nomineeCategoryRepository) GetCategoriesForNominee(ctx context.Context,
 func (r *nomineeCategoryRepository) GetNomineesForCategory(ctx context.Context, categoryID uuid.UUID) ([]models.Nominee, error) {
 	var nominees []models.Nominee
 	err := r.db.WithContext(ctx).
-		Select("nominee_id", "name").
-		Joins("JOIN nominee_categories ON nominee_categories.nominee_id = nominees.nominee_id").
+		Select("nominees.nominee_id", "nominees.name", "nominees.image_url").
+		Joins("JOIN nominee_categories ON nominees.nominee_id = nominee_categories.nominee_id").
 		Where("nominee_categories.category_id = ?", categoryID).
 		Find(&nominees).Error
 	return nominees, err
