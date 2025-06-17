@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"log"
 	"net/http"
 	"strings"
 
@@ -24,25 +23,20 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		//log.Printf("Received token: %s", tokenString) // Debug
 
 		claims, err := security.ValidateJWT(tokenString)
 		if err != nil {
-			log.Printf("Token validation failed: %v", err) // Debug
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token: " + err.Error()})
 			return
 		}
 
-		/* log.Printf("Token claims: %+v", claims) // Debug */
 
 		userID, err := uuid.Parse(claims.UserID)
 		if err != nil {
-			/* 			log.Printf("UUID parsing failed: %v", err) // Debug */
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid user ID in token"})
 			return
 		}
 
-		/* 		log.Printf("Authenticated userID: %s", userID) // Debug */
 
 		c.Set("user_id", userID)
 		c.Set("username", claims.Username)

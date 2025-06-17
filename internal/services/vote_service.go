@@ -133,7 +133,6 @@ func (s *votingMechanismService) GetCategoryVotes(ctx context.Context, categoryI
 }
 
 func (s *votingMechanismService) ValidateVotingPeriod(ctx context.Context, categoryID uuid.UUID) (bool, error) {
-	// TODO: implement this
 	return true, nil
 }
 

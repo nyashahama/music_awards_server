@@ -1,17 +1,11 @@
-// services/nominee_category_service.go
 package services
 
 import (
 	"context"
-	//"errors"
 
 	"github.com/google/uuid"
 	"github.com/nyashahama/music-awards/internal/models"
 	"github.com/nyashahama/music-awards/internal/repositories"
-)
-
-var (
-//ErrInvalidID = errors.New("invalid ID")
 )
 
 type NomineeCategoryService interface {

@@ -65,7 +65,6 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 		return
 	}
 
-	// Handle pointer fields
 	name := ""
 	if req.Name != nil {
 		name = *req.Name
