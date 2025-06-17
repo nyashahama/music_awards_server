@@ -138,7 +138,6 @@ func (h *NomineeCategoryHandler) GetNominees(c *gin.Context) {
 		return
 	}
 
-	// Convert to NomineeBrief DTO
 	response := make([]dtos.NomineeBrief, len(nominees))
 	for i, nominee := range nominees {
 		response[i] = dtos.NomineeBrief{
@@ -150,6 +149,7 @@ func (h *NomineeCategoryHandler) GetNominees(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response)
 }
+
 func handleNomineeCategoryError(c *gin.Context, err error) {
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "record not found"})

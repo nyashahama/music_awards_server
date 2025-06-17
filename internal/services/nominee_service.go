@@ -1,4 +1,3 @@
-// services/nominee_service.go
 package services
 
 import (
@@ -16,8 +15,6 @@ import (
 var (
 	ErrNomineeNotFound = errors.New("nominee not found")
 	ErrInvalidJSON     = errors.New("invalid JSON data")
-
-/* 	ErrCategoryNotFound = errors.New("category not found") */
 )
 
 type NomineeService interface {

@@ -86,6 +86,7 @@ func (s *categoryService) UpdateCategory(ctx context.Context, categoryID uuid.UU
 	}
 	return category, nil
 }
+
 func (s *categoryService) DeleteCategory(ctx context.Context, categoryID uuid.UUID) error {
 	return s.repo.Delete(ctx, categoryID)
 }

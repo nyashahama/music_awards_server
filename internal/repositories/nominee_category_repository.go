@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
+//NomineeCategory Repository
 type NomineeCategoryRepository interface {
 	AddCategory(ctx context.Context, nomineeId, categoryId uuid.UUID) error
 	RemoveCategory(ctx context.Context, nomineeId, categoryId uuid.UUID) error
@@ -71,7 +72,6 @@ func (r *nomineeCategoryRepository) SetCategories(ctx context.Context, nomineeId
 				categories[i] = models.Category{CategoryID: id}
 			}
 
-			// Use Replace instead of multiple Appends
 			if err := tx.Model(&models.Nominee{NomineeID: nomineeId}).
 				Association("Categories").Replace(categories); err != nil {
 				return err

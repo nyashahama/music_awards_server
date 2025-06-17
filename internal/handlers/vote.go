@@ -104,7 +104,6 @@ func (h *VoteHandler) ChangeVote(c *gin.Context) {
 		return
 	}
 
-	// Authorization: Only vote owner or admin can change
 	if currentUserRole != "admin" && vote.UserID != userID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 		return

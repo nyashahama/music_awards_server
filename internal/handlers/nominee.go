@@ -1,4 +1,3 @@
-// handlers/nominee.go
 package handlers
 
 import (

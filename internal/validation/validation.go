@@ -18,7 +18,6 @@ func ValidatePassword(pw string) error {
 
 	var hasLower, hasUpper, hasDigit bool
 	repeatChanges := 0
-	//repeatCount := 2 // track runs of repeating chars
 
 	for i := 0; i < n; i++ {
 		c := rune(pw[i])
