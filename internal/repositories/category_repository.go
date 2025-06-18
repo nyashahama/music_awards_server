@@ -56,6 +56,7 @@ func (r *categoryRepository) GetAll(ctx context.Context) ([]models.Category, err
 			return db.Joins("JOIN nominee_categories ON nominees.nominee_id = nominee_categories.nominee_id").
 				Where("nominee_categories.category_id = categories.category_id")
 		}).
+		Preload("Votes").
 		Find(&categories).Error
 	return categories, err
 }
