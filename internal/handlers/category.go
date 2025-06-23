@@ -115,6 +115,9 @@ func (h *CategoryHandler) GetCategory(c *gin.Context) {
 	c.JSON(http.StatusOK, dtos.NewCategoryResponse(category))
 }
 
+	
+
+
 func (h *CategoryHandler) ListCategories(c *gin.Context) {
 	categories, err := h.categoryService.ListAllCategories(c.Request.Context())
 	if err != nil {

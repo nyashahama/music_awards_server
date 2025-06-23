@@ -1,3 +1,4 @@
+// Package dtos
 package dtos
 
 import (
@@ -25,7 +26,7 @@ type CategoryResponse struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-// Converts model to DTO
+// NewCategoryResponse model response
 func NewCategoryResponse(category *models.Category) CategoryResponse {
 	return CategoryResponse{
 		CategoryID:  category.CategoryID,
