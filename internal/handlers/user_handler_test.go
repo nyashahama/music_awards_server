@@ -23,7 +23,46 @@ type MockUserService struct {
 
 func (m *MockUserService) Register(ctx context.Context, username, email, password string) (*models.User, error) {
 	args := m.Called(ctx, username, email, password)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*models.User), args.Error(1)
+}
+
+func (m *MockUserService) Login(ctx context.Context, email, password string) (string, error) {
+	args := m.Called(ctx, email, password)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockUserService) GetUserProfile(ctx context.Context, userID uuid.UUID) (*models.User, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.User), args.Error(1)
+}
+
+func (m *MockUserService) UpdateUser(ctx context.Context, userID uuid.UUID, updateData map[string]interface{}) (*models.User, error) {
+	args := m.Called(ctx, userID, updateData)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.User), args.Error(1)
+}
+
+func (m *MockUserService) DeleteUser(ctx context.Context, userID uuid.UUID) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
+func (m *MockUserService) PromoteToAdmin(ctx context.Context, userID uuid.UUID) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
+func (m *MockUserService) GetAllUsers(ctx context.Context) ([]models.User, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]models.User), args.Error(1)
 }
 
 // Implement all other UserService methods similarly...
@@ -124,4 +163,64 @@ func TestUserHandler_Login(t *testing.T) {
 	})
 }
 
-// Add tests for other endpoints: GetProfile, UpdateProfile, DeleteAccount, etc.
+func TestUserHandler_UpdateProfile(t *testing.T) {
+	userID := uuid.New()
+
+	t.Run("authorized update", func(t *testing.T) {
+		mockService := new(MockUserService)
+		handler := NewUserHandler(mockService)
+
+		updateReq := dtos.UpdateProfileRequest{
+			Username: ptr("newusername"),
+		}
+		user := &models.User{UserID: userID, Username: "newusername"}
+
+		mockService.On("UpdateUser", mock.Anything, userID, mock.Anything).Return(user, nil)
+
+		router := gin.Default()
+		router.Use(func(c *gin.Context) {
+			c.Set("user_id", userID)
+			c.Set("user_role", "user")
+		})
+		router.PUT("/users/:id", handler.UpdateProfile)
+
+		body, _ := json.Marshal(updateReq)
+		req, _ := http.NewRequest(http.MethodPut, "/users/"+userID.String(), bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+
+		assert.Equal(t, http.StatusOK, resp.Code)
+		mockService.AssertExpectations(t)
+	})
+}
+
+func TestUserHandler_DeleteAccount(t *testing.T) {
+	t.Run("admin deletion", func(t *testing.T) {
+		mockService := new(MockUserService)
+		handler := NewUserHandler(mockService)
+		userID := uuid.New()
+
+		mockService.On("DeleteUser", mock.Anything, userID).Return(nil)
+
+		router := gin.Default()
+		router.Use(func(c *gin.Context) {
+			c.Set("user_id", uuid.New()) // Different admin user
+			c.Set("user_role", "admin")
+		})
+		router.DELETE("/users/:id", handler.DeleteAccount)
+
+		req, _ := http.NewRequest(http.MethodDelete, "/users/"+userID.String(), nil)
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+
+		assert.Equal(t, http.StatusNoContent, resp.Code)
+		mockService.AssertExpectations(t)
+	})
+}
+
+// Helper function for pointers
+func ptr(s string) *string {
+	return &s
+}

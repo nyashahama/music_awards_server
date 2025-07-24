@@ -22,7 +22,43 @@ func (m *MockUserRepository) Create(ctx context.Context, user *models.User) erro
 
 func (m *MockUserRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*models.User), args.Error(1)
+}
+
+func (m *MockUserRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
+	args := m.Called(ctx, email)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.User), args.Error(1)
+}
+
+func (m *MockUserRepository) GetAll(ctx context.Context) ([]models.User, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]models.User), args.Error(1)
+}
+
+func (m *MockUserRepository) Update(ctx context.Context, user *models.User) error {
+	args := m.Called(ctx, user)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) DecrementAvailableVotes(ctx context.Context, userID uuid.UUID) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) IncrementAvailableVotes(ctx context.Context, userID uuid.UUID) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
 }
 
 // Implement all other UserRepository methods similarly...
@@ -57,13 +93,17 @@ func TestUserService_Register(t *testing.T) {
 		mockRepo.AssertExpectations(t)
 	})
 
-	t.Run("invalid password", func(t *testing.T) {
+	t.Run("invalid password with existing email", func(t *testing.T) {
 		mockRepo := new(MockUserRepository)
 		service := NewUserService(mockRepo)
 
-		_, err := service.Register(context.Background(), "testuser", "test@example.com", "short")
+		existingUser := &models.User{Email: "test@example.com"}
+		mockRepo.On("GetByEmail", mock.Anything, "test@example.com").Return(existingUser, nil)
+
+		_, err := service.Register(context.Background(), "testuser", "test@example.com", "weak")
 
 		assert.ErrorIs(t, err, ErrPasswordValidation)
+		mockRepo.AssertNotCalled(t, "Create") // Ensure no user creation attempted
 	})
 }
 
@@ -106,4 +146,65 @@ func TestUserService_Login(t *testing.T) {
 	})
 }
 
-// Add similar tests for other methods: UpdateUser, DeleteUser, PromoteToAdmin, etc.
+func TestUserService_UpdateUser(t *testing.T) {
+	userID := uuid.New()
+
+	t.Run("successful update", func(t *testing.T) {
+		mockRepo := new(MockUserRepository)
+		service := NewUserService(mockRepo)
+
+		existingUser := &models.User{
+			UserID: userID,
+			Email:  "old@example.com",
+		}
+		updateData := map[string]interface{}{
+			"username": "newusername",
+		}
+
+		mockRepo.On("GetByID", mock.Anything, userID).Return(existingUser, nil)
+		mockRepo.On("Update", mock.Anything, mock.AnythingOfType("*models.User")).Return(nil)
+
+		user, err := service.UpdateUser(context.Background(), userID, updateData)
+
+		assert.NoError(t, err)
+		assert.Equal(t, "newusername", user.Username)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("email conflict", func(t *testing.T) {
+		mockRepo := new(MockUserRepository)
+		service := NewUserService(mockRepo)
+
+		existingUser := &models.User{UserID: userID, Email: "old@example.com"}
+		conflictUser := &models.User{UserID: uuid.New(), Email: "new@example.com"}
+		updateData := map[string]interface{}{"email": "new@example.com"}
+
+		mockRepo.On("GetByID", mock.Anything, userID).Return(existingUser, nil)
+		mockRepo.On("GetByEmail", mock.Anything, "new@example.com").Return(conflictUser, nil)
+
+		_, err := service.UpdateUser(context.Background(), userID, updateData)
+
+		assert.ErrorIs(t, err, ErrEmailExists)
+		mockRepo.AssertNotCalled(t, "Update")
+	})
+}
+
+func TestUserService_PromoteToAdmin(t *testing.T) {
+	t.Run("successful promotion", func(t *testing.T) {
+		mockRepo := new(MockUserRepository)
+		service := NewUserService(mockRepo)
+		userID := uuid.New()
+
+		user := &models.User{UserID: userID, Role: "user"}
+		mockRepo.On("GetByID", mock.Anything, userID).Return(user, nil)
+		mockRepo.On("Update", mock.Anything, mock.MatchedBy(func(u *models.User) bool {
+			return u.Role == "admin"
+		})).Return(nil)
+
+		err := service.PromoteToAdmin(context.Background(), userID)
+
+		assert.NoError(t, err)
+		mockRepo.AssertExpectations(t)
+
+	})
+}
