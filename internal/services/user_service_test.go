@@ -87,23 +87,24 @@ func TestUserService_Register(t *testing.T) {
 		existingUser := &models.User{Email: "test@example.com"}
 		mockRepo.On("GetByEmail", mock.Anything, "test@example.com").Return(existingUser, nil)
 
-		_, err := service.Register(context.Background(), "testuser", "test@example.com", "password")
+		// Use valid password to isolate email exists error
+		_, err := service.Register(context.Background(), "testuser", "test@example.com", "ValidPass123!")
 
 		assert.ErrorIs(t, err, ErrEmailExists)
 		mockRepo.AssertExpectations(t)
 	})
 
-	t.Run("invalid password with existing email", func(t *testing.T) {
+	t.Run("invalid password", func(t *testing.T) {
 		mockRepo := new(MockUserRepository)
 		service := NewUserService(mockRepo)
 
-		existingUser := &models.User{Email: "test@example.com"}
-		mockRepo.On("GetByEmail", mock.Anything, "test@example.com").Return(existingUser, nil)
+		// Don't return existing user to trigger password validation
+		mockRepo.On("GetByEmail", mock.Anything, "test@example.com").Return((*models.User)(nil), nil)
 
 		_, err := service.Register(context.Background(), "testuser", "test@example.com", "weak")
 
 		assert.ErrorIs(t, err, ErrPasswordValidation)
-		mockRepo.AssertNotCalled(t, "Create") // Ensure no user creation attempted
+		mockRepo.AssertNotCalled(t, "Create")
 	})
 }
 
@@ -205,6 +206,5 @@ func TestUserService_PromoteToAdmin(t *testing.T) {
 
 		assert.NoError(t, err)
 		mockRepo.AssertExpectations(t)
-
 	})
 }

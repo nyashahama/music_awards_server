@@ -7,6 +7,11 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
+// Define dialer interface for mocking
+type dialer interface {
+	DialAndSend(m ...*gomail.Message) error
+}
+
 type mockDialer struct {
 	called bool
 }
@@ -23,15 +28,15 @@ func TestSendVerificationEmail(t *testing.T) {
 	os.Setenv("SMTP_USERNAME", "user")
 	os.Setenv("SMTP_PASSWORD", "pass")
 
-	// Replace dialer with mock
-	originalDialer := newDialer
-	defer func() { newDialer = originalDialer }()
+	// ToDO: insert mock here:
+	//	originalNewDialer := newDialer
+	//	defer func() { newDialer = originalNewDialer }()
 
 	mock := &mockDialer{}
-	newDialer = func(host string, port int, username, password string) dialer {
-		return mock
-	}
-
+	// newDialer = func(host string, port int, username, password string) dialer {
+	// 	return mock
+	// }
+	//
 	SendVerificationEmail("test@example.com", "https://verify.com")
 
 	if !mock.called {

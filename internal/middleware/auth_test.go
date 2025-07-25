@@ -1,25 +1,20 @@
 package middleware
 
 import (
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nyashahama/music-awards/internal/security"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAuthMiddleware(t *testing.T) {
-	originalValidate := security.ValidateJWT
+	// TODO: complte this:
+	originalValidate := security.ValidateJWT()
+	security.ValidateJWT = mockValidateJWT
 	defer func() { security.ValidateJWT = originalValidate }()
-
-	security.ValidateJWT = func(token string) (*security.Claims, error) {
-		if token == "valid" {
-			return &security.Claims{UserID: "123"}, nil
-		}
-		return nil, errors.New("invalid token")
-	}
 
 	tests := []struct {
 		name     string
