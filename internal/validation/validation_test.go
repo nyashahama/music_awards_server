@@ -2,6 +2,7 @@ package validation
 
 import (
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -38,7 +39,7 @@ func TestValidatePassword(t *testing.T) {
 		{"Too short", "A1!", true, 3},
 		{"Missing types", "password", true, 2},
 		{"Repeating chars", "aaaBBB111", true, 3},
-		{"Long password with repeats", "aaaaaaaaaaaaaaaaaaaaa", true, 19}, // Updated expected value
+		{"Long password with repeats", "aaaaaaaaaaaaaaaaaaaaa", true, 19},
 	}
 
 	for _, tt := range tests {
@@ -52,12 +53,14 @@ func TestValidatePassword(t *testing.T) {
 			if tt.wantErr && err != nil {
 				// Extract steps from error message
 				msg := err.Error()
-				start := len(msg) - 1
-				if start >= 0 {
-					steps, _ := strconv.Atoi(string(msg[start]))
-					if steps != tt.wantSteps {
-						t.Errorf("Expected %d steps, got %d", tt.wantSteps, steps)
-					}
+				parts := strings.Split(msg, " ")
+				steps, convErr := strconv.Atoi(parts[len(parts)-1])
+				if convErr != nil {
+					t.Errorf("Failed to parse steps: %v", convErr)
+					return
+				}
+				if steps != tt.wantSteps {
+					t.Errorf("Expected %d steps, got %d", tt.wantSteps, steps)
 				}
 			}
 		})
