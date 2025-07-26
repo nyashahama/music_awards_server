@@ -107,16 +107,5 @@ func (s *categoryService) ListAllCategories(ctx context.Context) ([]models.Categ
 }
 
 func (s *categoryService) ListActiveCategories(ctx context.Context) ([]models.Category, error) {
-	allCategories, err := s.repo.GetAll(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get categories: %w", err)
-	}
-
-	var activeCategories []models.Category
-	for _, cat := range allCategories {
-		if len(cat.Votes) > 0 {
-			activeCategories = append(activeCategories, cat)
-		}
-	}
-	return activeCategories, nil
+    return s.repo.GetActive(ctx)
 }

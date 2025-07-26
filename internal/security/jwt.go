@@ -20,6 +20,9 @@ type JWTClaims struct {
 
 var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
+// Function variable for validation (can be overridden in tests)
+var ValidateJWT = validateJWT
+
 func GenerateJWT(userID uuid.UUID, username, role, email string) (string, error) {
 	claims := JWTClaims{
 		UserID:   userID.String(),
@@ -35,14 +38,14 @@ func GenerateJWT(userID uuid.UUID, username, role, email string) (string, error)
 	return token.SignedString(jwtSecret)
 }
 
-func ValidateJWT(tokenStr string) (*JWTClaims, error) {
+// Actual implementation
+func validateJWT(tokenStr string) (*JWTClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return jwtSecret, nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("token parse error: %w", err)
 	}

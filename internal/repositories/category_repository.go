@@ -15,6 +15,7 @@ type CategoryRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Category, error)
 	GetByName(ctx context.Context, name string) (*models.Category, error)
 	GetAll(ctx context.Context) ([]models.Category, error)
+    GetActive(ctx context.Context) ([]models.Category, error)
 	Update(ctx context.Context, category *models.Category) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
@@ -51,12 +52,21 @@ func (r *categoryRepository) GetByName(ctx context.Context, name string) (*model
 
 func (r *categoryRepository) GetAll(ctx context.Context) ([]models.Category, error) {
     var categories []models.Category
+    err := r.db.WithContext(ctx).Find(&categories).Error
+    return categories, err
+}
+
+func (r *categoryRepository) GetActive(ctx context.Context) ([]models.Category, error) {
+    var categories []models.Category
     err := r.db.WithContext(ctx).
-        Preload("Nominees").   
-		Preload("Votes").
+        Select("categories.*").
+        Joins("LEFT JOIN votes ON votes.category_id = categories.category_id").
+        Group("categories.category_id").
+        Having("COUNT(votes.vote_id) > 0").
         Find(&categories).Error
     return categories, err
 }
+
 func (r *categoryRepository) Update(ctx context.Context, category *models.Category) error {
 	return r.db.WithContext(ctx).Save(category).Error
 }

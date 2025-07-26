@@ -115,6 +115,9 @@ func (h *CategoryHandler) GetCategory(c *gin.Context) {
 	c.JSON(http.StatusOK, dtos.NewCategoryResponse(category))
 }
 
+	
+
+
 func (h *CategoryHandler) ListCategories(c *gin.Context) {
 	categories, err := h.categoryService.ListAllCategories(c.Request.Context())
 	if err != nil {
@@ -130,13 +133,17 @@ func (h *CategoryHandler) ListCategories(c *gin.Context) {
 }
 
 func (h *CategoryHandler) ListActiveCategories(c *gin.Context) {
-	categories, err := h.categoryService.ListActiveCategories(c.Request.Context())
-	if err != nil {
-		handleCategoryError(c, err)
-		return
-	}
+    categories, err := h.categoryService.ListActiveCategories(c.Request.Context())
+    if err != nil {
+        handleCategoryError(c, err)
+        return
+    }
 
-	c.JSON(http.StatusOK, categories)
+    response := make([]dtos.CategoryResponse, len(categories))
+    for i, cat := range categories {
+        response[i] = dtos.NewCategoryResponse(&cat)
+    }
+    c.JSON(http.StatusOK, response)
 }
 
 func handleCategoryError(c *gin.Context, err error) {
