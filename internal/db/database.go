@@ -1,3 +1,4 @@
+// Package db
 package db
 
 import (
@@ -78,7 +79,6 @@ func NewGormConnection(config *Config) (*gorm.DB, error) {
 		PrepareStmt:            true,
 		SkipDefaultTransaction: true,
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -114,7 +114,6 @@ func CloseConnection() {
 
 // MigrateModels runs database migrations
 func MigrateModels(db *gorm.DB) error {
-
 	// Create tables with constraints directly
 
 	err := db.Set("gorm:table_options", "WITHOUT OIDS").AutoMigrate(
@@ -152,4 +151,3 @@ func HealthCheck() error {
 	defer cancel()
 	return dbPool.Ping(ctx)
 }
-

@@ -1,3 +1,4 @@
+// Package models
 package models
 
 import (
@@ -12,7 +13,7 @@ type User struct {
 	PasswordHash   string    `gorm:"not null"`
 	Email          string    `gorm:"unique;not null"`
 	Role           string    `gorm:"not null"`
-	AvailableVotes int       `gorm:"not null;default:5"` 
+	AvailableVotes int       `gorm:"not null;default:5"`
 	CreatedAt      time.Time `gorm:"autoCreateTime"`
 	UpdatedAt      time.Time `gorm:"autoUpdateTime"`
 	Votes          []Vote    `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`

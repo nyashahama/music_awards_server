@@ -1,3 +1,4 @@
+// Package middleware
 package middleware
 
 import (
@@ -23,20 +24,17 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-
 		claims, err := security.ValidateJWT(tokenString)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token: " + err.Error()})
 			return
 		}
 
-
 		userID, err := uuid.Parse(claims.UserID)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid user ID in token"})
 			return
 		}
-
 
 		c.Set("user_id", userID)
 		c.Set("username", claims.Username)

@@ -17,7 +17,3 @@ type Vote struct {
 	Category Category `gorm:"foreignKey:CategoryID;constraint:OnDelete:CASCADE"`
 	Nominee  Nominee  `gorm:"foreignKey:NomineeID;constraint:OnDelete:CASCADE"`
 }
-
-// func (Vote) TableName() string {
-// 	return "votes"
-// }

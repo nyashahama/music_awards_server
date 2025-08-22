@@ -1,3 +1,4 @@
+// Package repositories
 package repositories
 
 import (
@@ -44,8 +45,8 @@ func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Use
 func (r *userRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 	err := r.db.WithContext(ctx).
-		Where("email = ?", email). 
-		First(&user).Error        
+		Where("email = ?", email).
+		First(&user).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
