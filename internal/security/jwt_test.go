@@ -40,6 +40,12 @@ func TestGenerateAndValidateJWT(t *testing.T) {
 func TestValidateJWT_InvalidToken(t *testing.T) {
 	setupTestEnv()
 
+	// Generate a token with a different secret to simulate invalid signature
+	otherSecret := []byte("completely-different-secret")
+	claims := jwt.MapClaims{"sub": "12345", "name": "Test User"}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	badToken, _ := token.SignedString(otherSecret)
+
 	tests := []struct {
 		name      string
 		token     string
@@ -47,7 +53,7 @@ func TestValidateJWT_InvalidToken(t *testing.T) {
 	}{
 		{"Empty token", "", "token parse error"},
 		{"Malformed token", "invalid.token.here", "token parse error"},
-		{"Invalid signature", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", "signature is invalid"},
+		{"Invalid signature", badToken, "signature is invalid"},
 	}
 
 	for _, tt := range tests {
