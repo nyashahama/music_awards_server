@@ -62,7 +62,7 @@ func (s *userService) Register(ctx context.Context, username, email, password st
 
 	hashedPassword, err := hashPassword(password)
 	if err != nil {
-		return nil, fmt.Errorf("failed to hash password: %w", err)
+		return nil, fmt.Errorf("failed to hash the password: %w", err)
 	}
 
 	user := &models.User{
