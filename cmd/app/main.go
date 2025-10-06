@@ -106,7 +106,7 @@ func Run() {
 		gin.Recovery(),
 		gin.Logger(),
 		cors.New(cors.Config{
-			AllowOrigins:     []string{os.Getenv("FRONTEND_URL")},
+			AllowOrigins:     []string{os.Getenv("FRONTEND_URL"), "https://music-awards-web.onrender.com/*"},
 			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 			ExposeHeaders:    []string{"Content-Length"},
