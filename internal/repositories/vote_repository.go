@@ -32,26 +32,35 @@ func (r *voteRepository) Create(ctx context.Context, vote *models.Vote) error {
 	return r.db.WithContext(ctx).Create(vote).Error
 }
 
-func (r *voteRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Vote, error) {
+func (r *voteRepository) GetByID(ctx context.Context, voteID uuid.UUID) (*models.Vote, error) {
 	var vote models.Vote
-	err := r.db.WithContext(ctx).First(&vote, "vote_id = ?", id).Error
-	return &vote, err
+	err := r.db.WithContext(ctx).
+		Preload("Category").
+		Preload("Nominee").
+		Where("vote_id = ?", voteID).
+		First(&vote).Error
+	if err != nil {
+		return nil, err
+	}
+	return &vote, nil
 }
 
 func (r *voteRepository) GetAll(ctx context.Context) ([]models.Vote, error) {
 	var votes []models.Vote
-	err := r.db.WithContext(ctx).Find(&votes).Error
+	// Preload the relationships for GetAll as well
+	err := r.db.WithContext(ctx).
+		Preload("Category").
+		Preload("Nominee").
+		Find(&votes).Error
 	return votes, err
 }
 
 func (r *voteRepository) GetByUser(ctx context.Context, userID uuid.UUID) ([]models.Vote, error) {
 	var votes []models.Vote
-	err := r.db.WithContext(ctx).Preload("Category", func(db *gorm.DB) *gorm.DB {
-		return db.Select("category_id", "name")
-	}).
-		Preload("Nominee", func(db *gorm.DB) *gorm.DB {
-			return db.Select("nominee_id", "name")
-		}).
+	// Preload the Category and Nominee relationships
+	err := r.db.WithContext(ctx).
+		Preload("Category").
+		Preload("Nominee").
 		Where("user_id = ?", userID).
 		Find(&votes).Error
 	return votes, err
@@ -60,6 +69,8 @@ func (r *voteRepository) GetByUser(ctx context.Context, userID uuid.UUID) ([]mod
 func (r *voteRepository) GetByUserAndCategory(ctx context.Context, userID, categoryID uuid.UUID) (*models.Vote, error) {
 	var vote models.Vote
 	err := r.db.WithContext(ctx).
+		Preload("Category").
+		Preload("Nominee").
 		Where("user_id = ? AND category_id = ?", userID, categoryID).
 		First(&vote).Error
 

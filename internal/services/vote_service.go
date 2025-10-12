@@ -42,8 +42,6 @@ func NewVotingMechanismService(voteRepo repositories.VoteRepository, userRepo re
 }
 
 func (s *votingMechanismService) CastVote(ctx context.Context, userID, nomineeID, categoryID uuid.UUID) (*models.Vote, error) {
-	// Check available votes
-
 	hasVoted, err := s.HasVotedInCategory(ctx, userID, categoryID)
 	if err != nil {
 		return nil, fmt.Errorf("error checking existing vote: %w", err)
@@ -78,7 +76,16 @@ func (s *votingMechanismService) CastVote(ctx context.Context, userID, nomineeID
 		return nil, fmt.Errorf("failed to cast vote: %w", err)
 	}
 
-	return vote, nil
+	// Fetch the created vote with preloaded relationships
+	createdVote, err := s.voteRepo.GetByID(ctx, vote.VoteID)
+	if err != nil {
+		// Rollback both vote count and the created vote
+		s.userRepo.IncrementAvailableVotes(ctx, userID)
+		s.voteRepo.Delete(ctx, vote.VoteID)
+		return nil, fmt.Errorf("failed to fetch created vote: %w", err)
+	}
+
+	return createdVote, nil
 }
 
 func (s *votingMechanismService) GetVote(ctx context.Context, voteID uuid.UUID) (*models.Vote, error) {

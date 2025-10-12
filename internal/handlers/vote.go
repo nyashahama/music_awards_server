@@ -56,7 +56,8 @@ func (h *VoteHandler) CastVote(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, dtos.NewVoteResponse(vote))
+	// Use NewUserVotesResponse instead of NewVoteResponse to get category/nominee details
+	c.JSON(http.StatusCreated, dtos.NewUserVotesResponse(vote))
 }
 
 func (h *VoteHandler) GetUserVotes(c *gin.Context) {
