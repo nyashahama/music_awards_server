@@ -13,7 +13,7 @@ type Vote struct {
 	NomineeID  uuid.UUID `gorm:"type:uuid;not null"`
 	CreatedAt  time.Time `gorm:"autoCreateTime"`
 
-	User     User     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	Category Category `gorm:"foreignKey:CategoryID;constraint:OnDelete:CASCADE"`
-	Nominee  Nominee  `gorm:"foreignKey:NomineeID;constraint:OnDelete:CASCADE"`
+	User     User     `gorm:"foreignKey:UserID;references:UserID;constraint:OnDelete:CASCADE"`
+	Category Category `gorm:"foreignKey:CategoryID;references:CategoryID;constraint:OnDelete:CASCADE"`
+	Nominee  Nominee  `gorm:"foreignKey:NomineeID;references:NomineeID;constraint:OnDelete:CASCADE"`
 }
