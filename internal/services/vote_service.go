@@ -42,6 +42,16 @@ func NewVotingMechanismService(voteRepo repositories.VoteRepository, userRepo re
 }
 
 func (s *votingMechanismService) CastVote(ctx context.Context, userID, nomineeID, categoryID uuid.UUID) (*models.Vote, error) {
+	// Check if user exists and has votes
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	if user.AvailableVotes <= 0 {
+		return nil, ErrNoVotesAvailable
+	}
+
 	hasVoted, err := s.HasVotedInCategory(ctx, userID, categoryID)
 	if err != nil {
 		return nil, fmt.Errorf("error checking existing vote: %w", err)
@@ -50,7 +60,7 @@ func (s *votingMechanismService) CastVote(ctx context.Context, userID, nomineeID
 		return nil, ErrAlreadyVotedInCategory
 	}
 
-	// Validate voting period
+	// Validate voting period - implement actual validation
 	isOpen, err := s.ValidateVotingPeriod(ctx, categoryID)
 	if err != nil {
 		return nil, fmt.Errorf("error validating voting period: %w", err)
@@ -59,6 +69,7 @@ func (s *votingMechanismService) CastVote(ctx context.Context, userID, nomineeID
 		return nil, ErrVotingPeriodClosed
 	}
 
+	// Decrement votes first
 	if err := s.userRepo.DecrementAvailableVotes(ctx, userID); err != nil {
 		return nil, fmt.Errorf("insufficient votes: %w", err)
 	}
@@ -76,16 +87,7 @@ func (s *votingMechanismService) CastVote(ctx context.Context, userID, nomineeID
 		return nil, fmt.Errorf("failed to cast vote: %w", err)
 	}
 
-	// Fetch the created vote with preloaded relationships
-	createdVote, err := s.voteRepo.GetByID(ctx, vote.VoteID)
-	if err != nil {
-		// Rollback both vote count and the created vote
-		s.userRepo.IncrementAvailableVotes(ctx, userID)
-		s.voteRepo.Delete(ctx, vote.VoteID)
-		return nil, fmt.Errorf("failed to fetch created vote: %w", err)
-	}
-
-	return createdVote, nil
+	return vote, nil
 }
 
 func (s *votingMechanismService) GetVote(ctx context.Context, voteID uuid.UUID) (*models.Vote, error) {

@@ -50,13 +50,16 @@ func (h *VoteHandler) CastVote(c *gin.Context) {
 		return
 	}
 
+	fmt.Printf("Casting vote: user=%s, category=%s, nominee=%s\n",
+		userID, req.CategoryID, req.NomineeID)
+
 	vote, err := h.voteService.CastVote(c.Request.Context(), userID, req.NomineeID, req.CategoryID)
 	if err != nil {
+		fmt.Printf("Vote service error: %v\n", err) // Add logging
 		handleVoteServiceError(c, err)
 		return
 	}
 
-	// Use NewUserVotesResponse instead of NewVoteResponse to get category/nominee details
 	c.JSON(http.StatusCreated, dtos.NewUserVotesResponse(vote))
 }
 
