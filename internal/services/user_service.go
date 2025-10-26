@@ -1,4 +1,4 @@
-// Package services
+// Package Service
 package services
 
 import (
