@@ -20,7 +20,6 @@ var (
 	dbOnce sync.Once
 )
 
-// Database configuration structure
 type Config struct {
 	Host     string
 	Port     string

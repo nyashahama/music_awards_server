@@ -50,7 +50,6 @@ type NomineeBrief struct {
 	ImageURL  string    `json:"image_url"`
 }
 
-// Updated to handle nil categories
 func NewNomineeResponse(nominee *models.Nominee) NomineeResponse {
 	var categories []CategoryBrief
 	if nominee.Categories != nil {

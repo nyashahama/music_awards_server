@@ -9,7 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// Nominee Repository
 type NomineeRepository interface {
 	Create(ctx context.Context, nominee *models.Nominee) error
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Nominee, error)

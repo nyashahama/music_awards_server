@@ -139,7 +139,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	updateData := make(map[string]interface{})
+	updateData := make(map[string]any)
 	if req.Username != nil {
 		updateData["username"] = *req.Username
 	}

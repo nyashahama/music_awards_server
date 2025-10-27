@@ -27,7 +27,7 @@ type UserService interface {
 	Register(ctx context.Context, username, email, password string) (*models.User, error)
 	Login(ctx context.Context, email, password string) (string, error) // Returns JWT token
 	GetUserProfile(ctx context.Context, userID uuid.UUID) (*models.User, error)
-	UpdateUser(ctx context.Context, userID uuid.UUID, updateData map[string]interface{}) (*models.User, error)
+	UpdateUser(ctx context.Context, userID uuid.UUID, updateData map[string]any) (*models.User, error)
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 	PromoteToAdmin(ctx context.Context, userID uuid.UUID) error
 	GetAllUsers(ctx context.Context) ([]models.User, error)
@@ -114,7 +114,7 @@ func (s *userService) GetUserProfile(ctx context.Context, userID uuid.UUID) (*mo
 	return user, nil
 }
 
-func (s *userService) UpdateUser(ctx context.Context, userID uuid.UUID, updateData map[string]interface{}) (*models.User, error) {
+func (s *userService) UpdateUser(ctx context.Context, userID uuid.UUID, updateData map[string]any) (*models.User, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)

@@ -55,7 +55,7 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*models.
 
 func (r *userRepository) GetAll(ctx context.Context) ([]models.User, error) {
 	var users []models.User
-	err := r.db.WithContext(ctx).Select("user_id", "username", "available_votes", "created_at").Find(&users).Error
+	err := r.db.WithContext(ctx).Find(&users).Error
 	return users, err
 }
 

@@ -28,7 +28,7 @@ func (h *CategoryHandler) RegisterRoutes(r *gin.Engine) {
 	categories.GET("/active", h.ListActiveCategories)
 	categories.GET("/:categoryId", h.GetCategory)
 
-	//admin
+	// admin
 	adminCategories := r.Group("/categories")
 	adminCategories.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
 	adminCategories.POST("", h.CreateCategory)
@@ -115,9 +115,6 @@ func (h *CategoryHandler) GetCategory(c *gin.Context) {
 	c.JSON(http.StatusOK, dtos.NewCategoryResponse(category))
 }
 
-	
-
-
 func (h *CategoryHandler) ListCategories(c *gin.Context) {
 	categories, err := h.categoryService.ListAllCategories(c.Request.Context())
 	if err != nil {
@@ -133,17 +130,17 @@ func (h *CategoryHandler) ListCategories(c *gin.Context) {
 }
 
 func (h *CategoryHandler) ListActiveCategories(c *gin.Context) {
-    categories, err := h.categoryService.ListActiveCategories(c.Request.Context())
-    if err != nil {
-        handleCategoryError(c, err)
-        return
-    }
+	categories, err := h.categoryService.ListActiveCategories(c.Request.Context())
+	if err != nil {
+		handleCategoryError(c, err)
+		return
+	}
 
-    response := make([]dtos.CategoryResponse, len(categories))
-    for i, cat := range categories {
-        response[i] = dtos.NewCategoryResponse(&cat)
-    }
-    c.JSON(http.StatusOK, response)
+	response := make([]dtos.CategoryResponse, len(categories))
+	for i, cat := range categories {
+		response[i] = dtos.NewCategoryResponse(&cat)
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 func handleCategoryError(c *gin.Context, err error) {

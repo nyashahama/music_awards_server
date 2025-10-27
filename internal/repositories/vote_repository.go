@@ -9,7 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// Vote Repository
 type VoteRepository interface {
 	Create(ctx context.Context, vote *models.Vote) error
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Vote, error)
