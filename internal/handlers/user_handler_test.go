@@ -44,7 +44,7 @@ func (m *MockUserService) GetUserProfile(ctx context.Context, userID uuid.UUID) 
 	return args.Get(0).(*models.User), args.Error(1)
 }
 
-func (m *MockUserService) UpdateUser(ctx context.Context, userID uuid.UUID, updateData map[string]interface{}) (*models.User, error) {
+func (m *MockUserService) UpdateUser(ctx context.Context, userID uuid.UUID, updateData map[string]any) (*models.User, error) {
 	args := m.Called(ctx, userID, updateData)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -87,7 +87,7 @@ func setupAuthContext(router *gin.Engine, userID uuid.UUID, role string) *gin.En
 func TestUserHandler_Register(t *testing.T) {
 	tests := []struct {
 		name           string
-		payload        interface{}
+		payload        any
 		mockSetup      func(*MockUserService)
 		expectedStatus int
 	}{
@@ -111,7 +111,7 @@ func TestUserHandler_Register(t *testing.T) {
 		},
 		{
 			name: "invalid payload",
-			payload: map[string]interface{}{
+			payload: map[string]any{
 				"username": "testuser",
 				// Missing email and password
 			},
@@ -154,7 +154,7 @@ func TestUserHandler_Register(t *testing.T) {
 func TestUserHandler_Login(t *testing.T) {
 	tests := []struct {
 		name           string
-		payload        interface{}
+		payload        any
 		mockSetup      func(*MockUserService)
 		expectedStatus int
 	}{
@@ -182,7 +182,7 @@ func TestUserHandler_Login(t *testing.T) {
 		},
 		{
 			name: "invalid payload",
-			payload: map[string]interface{}{
+			payload: map[string]any{
 				"email": "test@example.com",
 				// Missing password
 			},
@@ -347,7 +347,7 @@ func TestUserHandler_UpdateProfile(t *testing.T) {
 		pathUserID     string
 		authUserID     uuid.UUID
 		authUserRole   string
-		payload        interface{}
+		payload        any
 		mockSetup      func(*MockUserService, uuid.UUID)
 		expectedStatus int
 	}{
