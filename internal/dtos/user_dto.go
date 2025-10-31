@@ -56,3 +56,21 @@ func NewUserResponse(user *models.User) UserResponse {
 		// UpdatedAt:      user.UpdatedAt,
 	}
 }
+
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+type ResetPasswordRequest struct {
+	Token       string `json:"token" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
+type ValidateResetTokenRequest struct {
+	Token string `json:"token" binding:"required"`
+}
+
+type PasswordResetResponse struct {
+	Message string `json:"message"`
+	Token   string `json:"token,omitempty"` // Only for development, remove in production
+}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/google/uuid"
@@ -31,14 +32,23 @@ type UserService interface {
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 	PromoteToAdmin(ctx context.Context, userID uuid.UUID) error
 	GetAllUsers(ctx context.Context) ([]models.User, error)
+	RequestPasswordReset(ctx context.Context, email string) (string, error)
+	ResetPassword(ctx context.Context, token, newPassword string) error
+	ValidateResetToken(ctx context.Context, token string) (*models.User, error)
 }
 
 type userService struct {
-	userRepo repositories.UserRepository
+	userRepo             repositories.UserRepository
+	passwordResetService PasswordResetService
+	emailService         EmailService
 }
 
-func NewUserService(userRepo repositories.UserRepository) UserService {
-	return &userService{userRepo: userRepo}
+func NewUserService(userRepo repositories.UserRepository, passwordResetService PasswordResetService, emailService EmailService) UserService {
+	return &userService{
+		userRepo:             userRepo,
+		passwordResetService: passwordResetService,
+		emailService:         emailService,
+	}
 }
 
 func (s *userService) Register(ctx context.Context, username, email, password string) (*models.User, error) {
@@ -77,6 +87,13 @@ func (s *userService) Register(ctx context.Context, username, email, password st
 	if err := s.userRepo.Create(ctx, user); err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
+
+	// Send welcome email (async - don't block registration)
+	go func() {
+		if err := s.emailService.SendWelcomeEmail(user.Email, user.Username, user.AvailableVotes); err != nil {
+			log.Printf("Failed to send welcome email to %s: %v", user.Email, err)
+		}
+	}()
 	return user, nil
 }
 
@@ -99,6 +116,16 @@ func (s *userService) Login(ctx context.Context, email, password string) (string
 	if err != nil {
 		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
+
+	userAgent := getStringFromContext(ctx, "User-Agent")
+	ipAddress := getStringFromContext(ctx, "IP-Address")
+
+	// Send login notification (async)
+	go func() {
+		if err := s.emailService.SendLoginNotificationEmail(user.Email, user.Username, userAgent, ipAddress); err != nil {
+			log.Printf("Failed to send login notification to %s: %v", user.Email, err)
+		}
+	}()
 
 	return token, nil
 }
@@ -192,4 +219,23 @@ func (s *userService) GetAllUsers(ctx context.Context) ([]models.User, error) {
 func hashPassword(password string) (string, error) {
 	b, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return string(b), err
+}
+
+func (s *userService) RequestPasswordReset(ctx context.Context, email string) (string, error) {
+	return s.passwordResetService.RequestPasswordReset(ctx, email)
+}
+
+func (s *userService) ResetPassword(ctx context.Context, token, newPassword string) error {
+	return s.passwordResetService.ResetPassword(ctx, token, newPassword)
+}
+
+func (s *userService) ValidateResetToken(ctx context.Context, token string) (*models.User, error) {
+	return s.passwordResetService.ValidateResetToken(ctx, token)
+}
+
+func getStringFromContext(ctx context.Context, key string) string {
+	if value, ok := ctx.Value(key).(string); ok {
+		return value
+	}
+	return "Unknown"
 }

@@ -4,6 +4,7 @@ package repositories
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/nyashahama/music-awards/internal/models"
@@ -19,6 +20,9 @@ type UserRepository interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 	DecrementAvailableVotes(ctx context.Context, userID uuid.UUID) error
 	IncrementAvailableVotes(ctx context.Context, userID uuid.UUID) error
+	SetPasswordResetToken(ctx context.Context, userID uuid.UUID, token string, expiresAt time.Time) error
+	GetByResetToken(ctx context.Context, token string) (*models.User, error)
+	ClearPasswordResetToken(ctx context.Context, userID uuid.UUID) error
 }
 
 type userRepository struct {
@@ -88,4 +92,35 @@ func (r *userRepository) IncrementAvailableVotes(ctx context.Context, userID uui
 		Model(&models.User{}).
 		Where("user_id = ?", userID).
 		Update("available_votes", gorm.Expr("available_votes + 1")).Error
+}
+
+func (r *userRepository) SetPasswordResetToken(ctx context.Context, userID uuid.UUID, token string, expiresAt time.Time) error {
+	return r.db.WithContext(ctx).
+		Model(&models.User{}).
+		Where("user_id = ?", userID).
+		Updates(map[string]any{
+			"reset_token":            token,
+			"reset_token_expires_at": expiresAt,
+		}).Error
+}
+
+func (r *userRepository) GetByResetToken(ctx context.Context, token string) (*models.User, error) {
+	var user models.User
+	err := r.db.WithContext(ctx).
+		Where("reset_token = ? AND reset_token_expires_at > ?", token, time.Now()).
+		First(&user).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return &user, err
+}
+
+func (r *userRepository) ClearPasswordResetToken(ctx context.Context, userID uuid.UUID) error {
+	return r.db.WithContext(ctx).
+		Model(&models.User{}).
+		Where("user_id = ?", userID).
+		Updates(map[string]any{
+			"reset_token":            nil,
+			"reset_token_expires_at": nil,
+		}).Error
 }

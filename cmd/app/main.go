@@ -69,9 +69,13 @@ func Run() {
 		log.Fatalf("Failed to create GORM instance: %v", err)
 	}
 
+	emailCfg := config.LoadEmailConfig()
+	emailService := services.NewEmailService(emailCfg)
+
 	// 5) Initialize services and handlers
 	userRepo := repositories.NewUserRepository(gormDB)
-	userSvc := services.NewUserService(userRepo)
+	passwordResetService := services.NewPasswordResetService(userRepo, emailService)
+	userSvc := services.NewUserService(userRepo, passwordResetService, emailService)
 	userH := handlers.NewUserHandler(userSvc)
 
 	// Initialize category dependencies
@@ -125,6 +129,9 @@ func Run() {
 		// Authentication
 		api.POST("/register", userH.Register)
 		api.POST("/login", userH.Login)
+		api.POST("/forgot-password", userH.ForgotPassword)
+		api.POST("/reset-password", userH.ResetPassword)
+		api.POST("/validate-reset-token", userH.ValidateResetToken)
 
 		// Public Category APIs
 		api.GET("/categories", categoryH.ListCategories)
