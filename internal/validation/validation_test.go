@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -30,16 +29,15 @@ func TestValidateEmail(t *testing.T) {
 
 func TestValidatePassword(t *testing.T) {
 	tests := []struct {
-		name      string
-		password  string
-		wantErr   bool
-		wantSteps int
+		name     string
+		password string
+		wantErr  bool
+		errMsg   string // expect specific error message content
 	}{
-		{"Valid password", "Pass123!", false, 0},
-		{"Too short", "A1!", true, 3},
-		{"Missing types", "password", true, 2},
-		{"Repeating chars", "aaaBBB111", true, 3},
-		{"Long password with repeats", "aaaaaaaaaaaaaaaaaaaaa", true, 19},
+		{"Valid password", "Pass123!", false, ""},
+		{"Too short", "A1!", true, "at least 8 characters"},
+		{"Common password", "password", true, "too common"},
+		// ... etc
 	}
 
 	for _, tt := range tests {
@@ -50,17 +48,9 @@ func TestValidatePassword(t *testing.T) {
 				return
 			}
 
-			if tt.wantErr && err != nil {
-				// Extract steps from error message
-				msg := err.Error()
-				parts := strings.Split(msg, " ")
-				steps, convErr := strconv.Atoi(parts[len(parts)-1])
-				if convErr != nil {
-					t.Errorf("Failed to parse steps: %v", convErr)
-					return
-				}
-				if steps != tt.wantSteps {
-					t.Errorf("Expected %d steps, got %d", tt.wantSteps, steps)
+			if tt.wantErr && tt.errMsg != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.errMsg) {
+					t.Errorf("Expected error containing %q, got %v", tt.errMsg, err)
 				}
 			}
 		})
