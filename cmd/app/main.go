@@ -30,6 +30,7 @@ func Run() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using system environment variables")
 	}
+
 	// 1) Load config
 	dbCfg, err := config.LoadDBConfig()
 	if err != nil {
@@ -112,7 +113,7 @@ func Run() {
 
 		cors.New(cors.Config{
 			AllowOrigins: []string{
-				os.Getenv("FRONTEND_URL"),               // e.g. http://localhost:4200
+				os.Getenv("FRONTEND_URL"), "*", // e.g. http://localhost:4200
 				"https://music-awards-web.onrender.com", // exact match
 			},
 			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},

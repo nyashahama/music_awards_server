@@ -49,7 +49,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.Register(c.Request.Context(), req.Username, req.Email, req.Password)
+	user, err := h.userService.Register(c.Request.Context(), req.FirstName, req.LastName, req.Email, req.Password, req.Location)
 	if err != nil {
 		handleServiceError(c, err)
 		return
@@ -134,7 +134,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	currentUserID := c.MustGet("user_id").(uuid.UUID)
 	currentUserRole := c.MustGet("user_role").(string)
 
-	//  Authorization check before calling service
+	// Authorization check before calling service
 	if currentUserRole != "admin" && currentUserID != userID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 		return
@@ -147,14 +147,20 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	}
 
 	updateData := make(map[string]any)
-	if req.Username != nil {
-		updateData["username"] = *req.Username
+	if req.FirstName != nil {
+		updateData["first_name"] = *req.FirstName
+	}
+	if req.LastName != nil {
+		updateData["last_name"] = *req.LastName
 	}
 	if req.Email != nil {
 		updateData["email"] = *req.Email
 	}
 	if req.Password != nil {
 		updateData["password"] = *req.Password
+	}
+	if req.Location != nil {
+		updateData["location"] = *req.Location
 	}
 
 	user, err := h.userService.UpdateUser(c.Request.Context(), userID, updateData)

@@ -25,7 +25,7 @@ var (
 
 // UserService handles user-related business logic
 type UserService interface {
-	Register(ctx context.Context, username, email, password string) (*models.User, error)
+	Register(ctx context.Context, firstName, lastName, email, password, location string) (*models.User, error)
 	Login(ctx context.Context, email, password string) (string, error) // Returns JWT token
 	GetUserProfile(ctx context.Context, userID uuid.UUID) (*models.User, error)
 	UpdateUser(ctx context.Context, userID uuid.UUID, updateData map[string]any) (*models.User, error)
@@ -51,7 +51,7 @@ func NewUserService(userRepo repositories.UserRepository, passwordResetService P
 	}
 }
 
-func (s *userService) Register(ctx context.Context, username, email, password string) (*models.User, error) {
+func (s *userService) Register(ctx context.Context, firstName, lastName, email, password, location string) (*models.User, error) {
 	email = strings.ToLower(email)
 
 	if !validation.ValidateEmail(email) {
@@ -77,11 +77,13 @@ func (s *userService) Register(ctx context.Context, username, email, password st
 
 	user := &models.User{
 		UserID:         uuid.New(),
-		Username:       username,
+		FirstName:      firstName,
+		LastName:       lastName,
 		Email:          email,
 		PasswordHash:   hashedPassword,
 		Role:           "user",
 		AvailableVotes: 5,
+		Location:       location,
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {
@@ -90,7 +92,7 @@ func (s *userService) Register(ctx context.Context, username, email, password st
 
 	// Send welcome email (async - don't block registration)
 	go func() {
-		if err := s.emailService.SendWelcomeEmail(user.Email, user.Username, user.AvailableVotes); err != nil {
+		if err := s.emailService.SendWelcomeEmail(user.Email, user.FirstName, user.AvailableVotes); err != nil {
 			log.Printf("Failed to send welcome email to %s: %v", user.Email, err)
 		}
 	}()
@@ -112,7 +114,9 @@ func (s *userService) Login(ctx context.Context, email, password string) (string
 		return "", ErrInvalidCredentials
 	}
 
-	token, err := security.GenerateJWT(user.UserID, user.Username, user.Role, user.Email)
+	// Use first name + last name for display name in JWT
+	displayName := user.FirstName + " " + user.LastName
+	token, err := security.GenerateJWT(user.UserID, displayName, user.Role, user.Email)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -122,7 +126,7 @@ func (s *userService) Login(ctx context.Context, email, password string) (string
 
 	// Send login notification (async)
 	go func() {
-		if err := s.emailService.SendLoginNotificationEmail(user.Email, user.Username, userAgent, ipAddress); err != nil {
+		if err := s.emailService.SendLoginNotificationEmail(user.Email, user.FirstName, userAgent, ipAddress); err != nil {
 			log.Printf("Failed to send login notification to %s: %v", user.Email, err)
 		}
 	}()
@@ -150,8 +154,16 @@ func (s *userService) UpdateUser(ctx context.Context, userID uuid.UUID, updateDa
 		return nil, ErrInvalidID
 	}
 
-	if username, ok := updateData["username"].(string); ok {
-		user.Username = username
+	if firstName, ok := updateData["first_name"].(string); ok {
+		user.FirstName = firstName
+	}
+
+	if lastName, ok := updateData["last_name"].(string); ok {
+		user.LastName = lastName
+	}
+
+	if location, ok := updateData["location"].(string); ok {
+		user.Location = location
 	}
 
 	if email, ok := updateData["email"].(string); ok {

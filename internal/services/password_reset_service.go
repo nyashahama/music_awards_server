@@ -67,7 +67,7 @@ func (s *passwordResetService) RequestPasswordReset(ctx context.Context, email s
 
 	// Send password reset email (async)
 	go func() {
-		if err := s.emailService.SendPasswordResetEmail(user.Email, user.Username, token); err != nil {
+		if err := s.emailService.SendPasswordResetEmail(user.Email, user.FirstName, token); err != nil {
 			log.Printf("Failed to send password reset email to %s: %v", user.Email, err)
 		}
 	}()
