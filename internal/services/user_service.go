@@ -67,17 +67,38 @@ func (s *userService) Register(ctx context.Context, username, email, password st
 	}
 
 	user := &models.User{
+<<<<<<< Updated upstream
 		UserID:         uuid.New(),
 		Username:       username,
 		Email:          email,
 		PasswordHash:   hashedPassword,
 		Role:           "user",
 		AvailableVotes: 5,
+=======
+		UserID:       uuid.New(),
+		FirstName:    firstName,
+		LastName:     lastName,
+		Email:        email,
+		PasswordHash: hashedPassword,
+		FreeVotes:    3,
+		Role:         "user",
+		Location:     location,
+>>>>>>> Stashed changes
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
+<<<<<<< Updated upstream
+=======
+
+	// Send welcome email (async - don't block registration)
+	go func() {
+		if err := s.emailService.SendWelcomeEmail(user.Email, user.FirstName, user.FreeVotes); err != nil {
+			log.Printf("Failed to send welcome email to %s: %v", user.Email, err)
+		}
+	}()
+>>>>>>> Stashed changes
 	return user, nil
 }
 

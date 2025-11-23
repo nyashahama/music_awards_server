@@ -3,10 +3,21 @@ package repositories
 import (
 	"context"
 	"errors"
+<<<<<<< Updated upstream
+=======
+	"fmt"
+	"time"
+>>>>>>> Stashed changes
 
 	"github.com/google/uuid"
 	"github.com/nyashahama/music-awards/internal/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+var (
+	ErrRecordNotFound = errors.New("record not found")
+	ErrDuplicateEntry = errors.New("duplicate entry")
 )
 
 type UserRepository interface {
@@ -16,8 +27,23 @@ type UserRepository interface {
 	GetAll(ctx context.Context) ([]models.User, error)
 	Update(ctx context.Context, user *models.User) error
 	Delete(ctx context.Context, id uuid.UUID) error
+<<<<<<< Updated upstream
 	DecrementAvailableVotes(ctx context.Context, userID uuid.UUID) error
 	IncrementAvailableVotes(ctx context.Context, userID uuid.UUID) error
+=======
+
+	// Vote management
+	DecrementFreeVotes(ctx context.Context, userID uuid.UUID) error
+	DecrementPaidVotes(ctx context.Context, userID uuid.UUID) error
+	IncrementFreeVotes(ctx context.Context, userID uuid.UUID) error
+	IncrementPaidVotes(ctx context.Context, userID uuid.UUID) error
+	AddPaidVotes(ctx context.Context, userID uuid.UUID, amount int) error
+
+	// Password reset
+	SetPasswordResetToken(ctx context.Context, userID uuid.UUID, token string, expiresAt time.Time) error
+	GetByResetToken(ctx context.Context, token string) (*models.User, error)
+	ClearPasswordResetToken(ctx context.Context, userID uuid.UUID) error
+>>>>>>> Stashed changes
 }
 
 type userRepository struct {
@@ -29,26 +55,36 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 }
 
 func (r *userRepository) Create(ctx context.Context, user *models.User) error {
-	return r.db.WithContext(ctx).Create(user).Error
+	if err := r.db.WithContext(ctx).Create(user).Error; err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return ErrDuplicateEntry
+		}
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+	return nil
 }
 
 func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	var user models.User
 	err := r.db.WithContext(ctx).First(&user, "user_id = ?", id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
+		return nil, ErrRecordNotFound
 	}
 	return &user, err
 }
 
 func (r *userRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
+<<<<<<< Updated upstream
 	err := r.db.WithContext(ctx).
 		Where("email = ?", email). // Fixed: use WHERE instead of Select
 		First(&user).Error         // Use First to get a single record
 
+=======
+	err := r.db.WithContext(ctx).Where("email = ?", email).First(&user).Error
+>>>>>>> Stashed changes
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
+		return nil, ErrRecordNotFound
 	}
 	return &user, err
 }
@@ -67,25 +103,90 @@ func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Delete(&models.User{}, "user_id = ?", id).Error
 }
 
-func (r *userRepository) DecrementAvailableVotes(ctx context.Context, userID uuid.UUID) error {
+func (r *userRepository) DecrementFreeVotes(ctx context.Context, userID uuid.UUID) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var user models.User
-		if err := tx.First(&user, "user_id = ?", userID).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			First(&user, "user_id = ?", userID).Error; err != nil {
 			return err
 		}
 
-		if user.AvailableVotes <= 0 {
-			return errors.New("no votes available")
+		if user.FreeVotes <= 0 {
+			return errors.New("no free votes available")
 		}
 
-		return tx.Model(&user).
-			Update("available_votes", gorm.Expr("available_votes - 1")).Error
+		return tx.Model(&user).Update("free_votes", gorm.Expr("free_votes - 1")).Error
 	})
 }
 
-func (r *userRepository) IncrementAvailableVotes(ctx context.Context, userID uuid.UUID) error {
+func (r *userRepository) DecrementPaidVotes(ctx context.Context, userID uuid.UUID) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var user models.User
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			First(&user, "user_id = ?", userID).Error; err != nil {
+			return err
+		}
+
+		if user.PaidVotes <= 0 {
+			return errors.New("no paid votes available")
+		}
+
+		return tx.Model(&user).Update("paid_votes", gorm.Expr("paid_votes - 1")).Error
+	})
+}
+
+func (r *userRepository) IncrementFreeVotes(ctx context.Context, userID uuid.UUID) error {
 	return r.db.WithContext(ctx).
 		Model(&models.User{}).
 		Where("user_id = ?", userID).
-		Update("available_votes", gorm.Expr("available_votes + 1")).Error
+		Update("free_votes", gorm.Expr("free_votes + 1")).Error
 }
+<<<<<<< Updated upstream
+=======
+
+func (r *userRepository) IncrementPaidVotes(ctx context.Context, userID uuid.UUID) error {
+	return r.db.WithContext(ctx).
+		Model(&models.User{}).
+		Where("user_id = ?", userID).
+		Update("paid_votes", gorm.Expr("paid_votes + 1")).Error
+}
+
+func (r *userRepository) AddPaidVotes(ctx context.Context, userID uuid.UUID, amount int) error {
+	return r.db.WithContext(ctx).
+		Model(&models.User{}).
+		Where("user_id = ?", userID).
+		Update("paid_votes", gorm.Expr("paid_votes + ?", amount)).Error
+}
+
+// Password reset methods remain the same...
+func (r *userRepository) SetPasswordResetToken(ctx context.Context, userID uuid.UUID, token string, expiresAt time.Time) error {
+	return r.db.WithContext(ctx).
+		Model(&models.User{}).
+		Where("user_id = ?", userID).
+		Updates(map[string]any{
+			"reset_token":            token,
+			"reset_token_expires_at": expiresAt,
+		}).Error
+}
+
+func (r *userRepository) GetByResetToken(ctx context.Context, token string) (*models.User, error) {
+	var user models.User
+	err := r.db.WithContext(ctx).
+		Where("reset_token = ? AND reset_token_expires_at > ?", token, time.Now()).
+		First(&user).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrRecordNotFound
+	}
+	return &user, err
+}
+
+func (r *userRepository) ClearPasswordResetToken(ctx context.Context, userID uuid.UUID) error {
+	return r.db.WithContext(ctx).
+		Model(&models.User{}).
+		Where("user_id = ?", userID).
+		Updates(map[string]any{
+			"reset_token":            nil,
+			"reset_token_expires_at": nil,
+		}).Error
+}
+>>>>>>> Stashed changes
