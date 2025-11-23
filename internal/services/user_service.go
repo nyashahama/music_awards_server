@@ -76,14 +76,14 @@ func (s *userService) Register(ctx context.Context, firstName, lastName, email, 
 	}
 
 	user := &models.User{
-		UserID:         uuid.New(),
-		FirstName:      firstName,
-		LastName:       lastName,
-		Email:          email,
-		PasswordHash:   hashedPassword,
-		Role:           "user",
-		AvailableVotes: 5,
-		Location:       location,
+		UserID:       uuid.New(),
+		FirstName:    firstName,
+		LastName:     lastName,
+		Email:        email,
+		PasswordHash: hashedPassword,
+		FreeVotes:    3,
+		Role:         "user",
+		Location:     location,
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {
@@ -92,7 +92,7 @@ func (s *userService) Register(ctx context.Context, firstName, lastName, email, 
 
 	// Send welcome email (async - don't block registration)
 	go func() {
-		if err := s.emailService.SendWelcomeEmail(user.Email, user.FirstName, user.AvailableVotes); err != nil {
+		if err := s.emailService.SendWelcomeEmail(user.Email, user.FirstName, user.FreeVotes); err != nil {
 			log.Printf("Failed to send welcome email to %s: %v", user.Email, err)
 		}
 	}()

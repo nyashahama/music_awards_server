@@ -22,8 +22,15 @@ type CategoryResponse struct {
 	CategoryID  uuid.UUID `json:"category_id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
+	IsActive    bool      `json:"is_active"`
+	TotalVotes  int64     `json:"total_votes,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type CategoryBrief struct {
+	CategoryID uuid.UUID `json:"category_id"`
+	Name       string    `json:"name"`
 }
 
 // NewCategoryResponse model response

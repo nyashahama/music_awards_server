@@ -39,10 +39,10 @@ type NomineeResponse struct {
 	Categories  []CategoryBrief `json:"categories,omitempty"` // Added omitempty
 }
 
-type CategoryBrief struct {
-	CategoryID uuid.UUID `json:"category_id"`
-	Name       string    `json:"name"`
-}
+// type CategoryBrief struct {
+// 	CategoryID uuid.UUID `json:"category_id"`
+// 	Name       string    `json:"name"`
+// }
 
 type NomineeBrief struct {
 	NomineeID uuid.UUID `json:"nominee_id"`
