@@ -128,11 +128,11 @@ func Run() {
 	api := router.Group("/api")
 	{
 		// Authentication
-		api.POST("/register", userH.Register)
-		api.POST("/login", userH.Login)
-		api.POST("/forgot-password", userH.ForgotPassword)
-		api.POST("/reset-password", userH.ResetPassword)
-		api.POST("/validate-reset-token", userH.ValidateResetToken)
+		api.POST("/auth/register", userH.Register)
+		api.POST("/auth/login", userH.Login)
+		api.POST("/auth/forgot-password", userH.ForgotPassword)
+		api.POST("/auth/reset-password", userH.ResetPassword)
+		api.POST("/auth/validate-reset-token", userH.ValidateResetToken)
 
 		// Public Category APIs
 		api.GET("/categories", categoryH.ListCategories)
